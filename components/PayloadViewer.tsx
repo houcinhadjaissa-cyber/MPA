@@ -44,17 +44,21 @@ export default function PayloadViewer({
 
   if (!payload) return null;
 
+  const charCount = payload.length.toLocaleString();
+
   return (
     <div className="mt-6 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden">
+      {/* Header row */}
       <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/10 flex-wrap">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <span className="text-green-400 text-xs font-mono uppercase tracking-widest">
             MACH Enterprise Prompt
           </span>
           {tokensUsed !== undefined && tokensUsed > 0 && (
             <span className="text-white/30 text-xs font-mono">
-              {tokensUsed} tokens · {durationMs !== undefined ? (durationMs / 1000).toFixed(1) + "s" : ""} ·{" "}
-              {model?.split("-").slice(0, 2).join("-")}
+              {tokensUsed} tokens
+              {durationMs !== undefined && ` · ${(durationMs / 1000).toFixed(1)}s`}
+              {model && ` · ${model.split("-").slice(0, 2).join("-")}`}
             </span>
           )}
         </div>
@@ -69,12 +73,21 @@ export default function PayloadViewer({
             onClick={handleCopy}
             className="text-xs font-mono px-3 py-1.5 rounded-lg border border-green-400/40 text-green-400 hover:bg-green-400/10 transition-colors"
           >
-            {copied ? "✓ Copied" : "Copy to Clipboard"}
+            {copied ? "✓ Copied!" : "Copy to Clipboard"}
           </button>
         </div>
       </div>
+
+      {/* Payload size */}
+      <div className="px-4 pt-3 pb-1">
+        <span className="text-white/25 text-xs font-mono">
+          Payload Size: {charCount} chars
+        </span>
+      </div>
+
+      {/* Content */}
       <div className="overflow-auto max-h-[60vh]">
-        <pre className="p-4 text-green-400 text-xs font-mono leading-relaxed whitespace-pre-wrap">
+        <pre className="px-4 pb-4 pt-2 text-green-400 text-xs font-mono leading-relaxed whitespace-pre-wrap">
           <code>{payload}</code>
         </pre>
       </div>
