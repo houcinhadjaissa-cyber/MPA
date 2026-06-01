@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
 export interface HistoryEntry {
   id: string;
@@ -24,53 +25,74 @@ export default function PromptHistory({ entries, onLoad, onClear }: PromptHistor
   if (entries.length === 0) return null;
 
   return (
-    <div className="mt-6 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-        <span className="text-white/60 text-xs font-mono uppercase tracking-widest">
+    <div className="space-y-3">
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <p className="text-body-muted text-[11px] font-mono uppercase tracking-widest">
           Prompt History ({entries.length})
-        </span>
-        <button
-          onClick={onClear}
-          className="text-xs font-mono px-3 py-1.5 rounded-lg border border-red-500/30 text-red-400/70 hover:bg-red-500/10 transition-colors"
-        >
+        </p>
+        <button onClick={onClear}
+          className="text-xs font-mono text-error/50 hover:text-error transition-colors">
           Clear All
         </button>
       </div>
-      <div className="divide-y divide-white/5 max-h-72 overflow-y-auto">
-        {entries.map((entry) => (
-          <div key={entry.id} className="px-4 py-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-white/80 text-xs font-semibold truncate">{entry.entity}</p>
-                <p className="text-white/30 text-xs font-mono mt-0.5">
-                  {new Date(entry.createdAt).toLocaleTimeString()} ·{" "}
-                  {entry.model.split("-").slice(0, 2).join("-")} ·{" "}
-                  {entry.tokensUsed} tokens · {(entry.durationMs / 1000).toFixed(1)}s
-                </p>
-              </div>
-              <div className="flex gap-2 shrink-0">
-                <button
-                  onClick={() => setExpanded(expanded === entry.id ? null : entry.id)}
-                  className="text-xs font-mono px-2 py-1 rounded border border-white/10 text-white/40 hover:text-white/70 transition-colors"
-                >
-                  {expanded === entry.id ? "Hide" : "View"}
-                </button>
-                <button
-                  onClick={() => onLoad(entry)}
-                  className="text-xs font-mono px-2 py-1 rounded border border-green-400/30 text-green-400/70 hover:bg-green-400/10 transition-colors"
-                >
-                  Load
-                </button>
-              </div>
-            </div>
-            {expanded === entry.id && (
-              <pre className="mt-3 text-green-400 text-xs font-mono leading-relaxed whitespace-pre-wrap bg-black/30 rounded-lg p-3 max-h-48 overflow-y-auto">
-                {entry.prompt}
-              </pre>
-            )}
-          </div>
+
+      {/* Pills */}
+      <div className="flex gap-2 flex-wrap">
+        {entries.map(entry => (
+          <button
+            key={entry.id}
+            onClick={() => {
+              onLoad(entry);
+              setExpanded(expanded === entry.id ? null : entry.id);
+            }}
+            className={`text-xs font-mono px-3 py-1.5 rounded-full transition-colors border ${
+              expanded === entry.id
+                ? "bg-surface-tile-3 text-body-on-dark border-white/10"
+                : "bg-surface-tile-2 text-body-muted hover:bg-surface-tile-3 hover:text-body-on-dark border-white/5"
+            }`}>
+            {entry.entity.length > 22 ? entry.entity.slice(0, 22) + "…" : entry.entity}
+            <span className="ml-1.5 opacity-50">
+              {new Date(entry.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          </button>
         ))}
       </div>
+
+      {/* Expanded preview */}
+      <AnimatePresence>
+        {expanded && (() => {
+          const entry = entries.find(e => e.id === expanded);
+          if (!entry) return null;
+          return (
+            <motion.div
+              key={expanded}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              className="overflow-hidden">
+              <div className="bg-surface-tile-1 rounded-2xl border border-white/5 overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3 border-b border-white/5">
+                  <div>
+                    <p className="text-body-on-dark text-xs font-medium">{entry.entity}</p>
+                    <p className="text-body-muted/50 text-xs font-mono mt-0.5">
+                      {entry.model.split("-").slice(0, 2).join("-")} · {entry.tokensUsed} tokens · {(entry.durationMs / 1000).toFixed(1)}s
+                    </p>
+                  </div>
+                  <button onClick={() => setExpanded(null)}
+                    className="text-body-muted/40 hover:text-body-muted transition-colors text-base font-mono">
+                    ×
+                  </button>
+                </div>
+                <pre className="px-5 py-4 text-success text-xs font-mono leading-relaxed whitespace-pre-wrap break-words max-h-52 overflow-y-auto">
+                  {entry.prompt}
+                </pre>
+              </div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
     </div>
   );
 }

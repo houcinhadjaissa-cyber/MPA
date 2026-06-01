@@ -9,7 +9,22 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        inter: ["Inter", "sans-serif"],
+        inter:   ["Inter", "sans-serif"],
+        display: ["SF Pro Display", "system-ui", "-apple-system", "sans-serif"],
+        body:    ["SF Pro Text",    "system-ui", "-apple-system", "sans-serif"],
+        mono:    ["SF Mono", "ui-monospace", "Menlo", "monospace"],
+      },
+      colors: {
+        "surface-black": "#000000",
+        "surface-tile-1": "#1C1C1E",
+        "surface-tile-2": "#2C2C2E",
+        "surface-tile-3": "#3A3A3C",
+        "body-on-dark":  "#F5F5F7",
+        "body-muted":    "#86868B",
+        "primary-on-dark": "#2997FF",
+        "success":  "#30D158",
+        "error":    "#FF453A",
+        "warning":  "#FFD60A",
       },
     },
   },

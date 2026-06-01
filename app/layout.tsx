@@ -1,22 +1,15 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "MPA — Master Plan Architect",
   description: "Surgical payload generation for every industry.",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-black text-white`}>
+      <body className="bg-surface-black text-body-on-dark font-body antialiased">
         {children}
       </body>
     </html>
