@@ -10,7 +10,7 @@ import {
   DOMINANCE_PROTOCOLS,
 } from "@/lib/payloadGenerator";
 
-// ── localStorage keys ──────────────────────────────────────────────
+// ── localStorage keys ─────────────────────────────────────────────────────────
 const LS_APIKEY    = "mpa_groq_api_key";
 const LS_OBJECTIVE = "mpa_master_objective";
 const LS_DIRECTIVES= "mpa_custom_directives";
@@ -18,7 +18,7 @@ const LS_HISTORY   = "mpa_prompt_history";
 const LS_PROJECTS  = "mpa_projects";
 const MAX_HISTORY  = 20;
 
-// ── Helpers ─────────────────────────────────────────────────────────
+// ── Safe localStorage helpers ─────────────────────────────────────────────────
 function lsGet(key: string, fallback = ""): string {
   if (typeof window === "undefined") return fallback;
   try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
@@ -35,7 +35,7 @@ function lsGetJSON<T>(key: string, fallback: T): T {
   try { return JSON.parse(lsGet(key, "null")) ?? fallback; } catch { return fallback; }
 }
 
-// ── Types ────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 interface SavedProject {
   id: string;
   label: string;
@@ -52,18 +52,65 @@ function maskKey(key: string): string {
   return key.slice(0, 7) + "*".repeat(Math.min(key.length - 7, 36));
 }
 
-// ════════════════════════════════════════════════════════════════════
+// ── Toggle chip component ─────────────────────────────────────────────────────
+function ToggleChip({
+  active,
+  onChange,
+  label,
+  sublabel,
+  accent = "green",
+}: {
+  active: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  sublabel: string;
+  accent?: "green" | "violet" | "amber";
+}) {
+  const colors = {
+    green:  { on: "border-green-400/70 bg-green-400/10 text-green-400",  off: "border-white/10 text-white/30" },
+    violet: { on: "border-violet-400/70 bg-violet-400/10 text-violet-300", off: "border-white/10 text-white/30" },
+    amber:  { on: "border-amber-400/70 bg-amber-400/10 text-amber-300",   off: "border-white/10 text-white/30" },
+  };
+  const c = colors[accent];
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!active)}
+      className={`flex items-start gap-3 w-full text-left rounded-xl border px-4 py-3 transition-all ${active ? c.on : c.off} hover:border-white/20`}
+    >
+      <span className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+        active
+          ? accent === "green"  ? "border-green-400 bg-green-400"
+          : accent === "violet" ? "border-violet-400 bg-violet-400"
+          : "border-amber-400 bg-amber-400"
+          : "border-white/20"
+      }`}>
+        {active && <span className="text-black text-[10px] font-bold leading-none">✓</span>}
+      </span>
+      <span>
+        <span className="block text-xs font-bold font-mono">{label}</span>
+        <span className="block text-xs text-white/30 font-mono mt-0.5">{sublabel}</span>
+      </span>
+    </button>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 export default function Dashboard() {
   // ── Core inputs
-  const [masterObjective, setMasterObjective] = useState("");
-  const [targetEntity,    setTargetEntity]    = useState("");
-  const [targetContext,   setTargetContext]    = useState("");
-  const [protocol,        setProtocol]        = useState(DOMINANCE_PROTOCOLS[0].id);
-  const [customDirectives,setCustomDirectives]= useState("");
+  const [masterObjective,  setMasterObjective]  = useState("");
+  const [targetEntity,     setTargetEntity]     = useState("");
+  const [targetContext,    setTargetContext]     = useState("");
+  const [protocol,         setProtocol]         = useState(DOMINANCE_PROTOCOLS[0].id);
+  const [customDirectives, setCustomDirectives] = useState("");
+
+  // ── Enhancement toggles
+  const [mathDominance,        setMathDominance]        = useState(false);
+  const [singularityIntelligence, setSingularityIntelligence] = useState(false);
 
   // ── API key
-  const [apiKey,   setApiKey]   = useState("");
-  const [showKey,  setShowKey]  = useState(false);
+  const [apiKey,  setApiKey]  = useState("");
+  const [showKey, setShowKey] = useState(false);
 
   // ── Model / tuning
   const [model,       setModel]       = useState(GROQ_MODELS[0].id);
@@ -80,11 +127,11 @@ export default function Dashboard() {
   const [error,   setError]   = useState<string | null>(null);
 
   // ── Persistence
-  const [history,  setHistory]  = useState<HistoryEntry[]>([]);
-  const [projects, setProjects] = useState<SavedProject[]>([]);
+  const [history,      setHistory]      = useState<HistoryEntry[]>([]);
+  const [projects,     setProjects]     = useState<SavedProject[]>([]);
   const [projectLabel, setProjectLabel] = useState("");
 
-  // ── Hydrate from localStorage on mount
+  // ── Hydrate from localStorage
   useEffect(() => {
     setApiKey(lsGet(LS_APIKEY));
     setMasterObjective(lsGet(LS_OBJECTIVE));
@@ -94,20 +141,20 @@ export default function Dashboard() {
   }, []);
 
   // ── Persist on change
-  useEffect(() => { lsSet(LS_APIKEY,    apiKey); },            [apiKey]);
-  useEffect(() => { lsSet(LS_OBJECTIVE, masterObjective); },   [masterObjective]);
-  useEffect(() => { lsSet(LS_DIRECTIVES,customDirectives); },  [customDirectives]);
+  useEffect(() => { lsSet(LS_APIKEY,    apiKey); },           [apiKey]);
+  useEffect(() => { lsSet(LS_OBJECTIVE, masterObjective); },  [masterObjective]);
+  useEffect(() => { lsSet(LS_DIRECTIVES,customDirectives); }, [customDirectives]);
 
-  // ── Template quick-fill
+  // ── Quick templates
   const applyTemplate = (idx: number) => {
     const t = INDUSTRY_TEMPLATES[idx];
     setTargetEntity(t.entity);
     setTargetContext(t.context);
   };
 
-  // ── Save project
+  // ── Project vault
   const saveProject = () => {
-    if (!projectLabel.trim() && !targetEntity.trim()) return;
+    if (!targetEntity.trim()) return;
     const entry: SavedProject = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       label: projectLabel.trim() || targetEntity,
@@ -137,10 +184,10 @@ export default function Dashboard() {
   };
 
   // ── Reset API key
-  const resetApiKey = () => {
-    setApiKey("");
-    lsRemove(LS_APIKEY);
-  };
+  const resetApiKey = () => { setApiKey(""); lsRemove(LS_APIKEY); };
+
+  // ── Active layers count for badge
+  const activeLayers = [mathDominance, singularityIntelligence].filter(Boolean).length;
 
   // ── Generate
   const handleGenerate = useCallback(async () => {
@@ -154,6 +201,8 @@ export default function Dashboard() {
         masterObjective,
         customDirectives,
         protocol,
+        mathDominance,
+        singularityIntelligence,
         apiKey,
         model,
         temperature,
@@ -182,7 +231,8 @@ export default function Dashboard() {
     }
   }, [
     targetEntity, targetContext, masterObjective, customDirectives,
-    protocol, apiKey, model, temperature, history,
+    protocol, mathDominance, singularityIntelligence,
+    apiKey, model, temperature, history,
   ]);
 
   const handleLoadHistory = (entry: HistoryEntry) => {
@@ -191,35 +241,31 @@ export default function Dashboard() {
     setDurationMs(entry.durationMs);
     setActiveModel(entry.model);
   };
-
-  const handleClearHistory = () => {
-    setHistory([]);
-    lsRemove(LS_HISTORY);
-  };
+  const handleClearHistory = () => { setHistory([]); lsRemove(LS_HISTORY); };
 
   // ── Derived
-  const estTokens    = Math.round((masterObjective.length + targetEntity.length + targetContext.length + customDirectives.length) / 4);
-  const canGenerate  = !loading && targetEntity.trim() && targetContext.trim() && apiKey.trim();
+  const totalInputLen = masterObjective.length + targetEntity.length + targetContext.length + customDirectives.length;
+  const estTokens     = Math.round(totalInputLen / 4);
+  const canGenerate   = !loading && targetEntity.trim() && targetContext.trim() && apiKey.trim();
   const selectedProto = DOMINANCE_PROTOCOLS.find((p) => p.id === protocol);
 
-  // ════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════════
   return (
     <div className="min-h-screen bg-black px-4 py-10">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-5">
 
-        {/* ── Header ───────────────────────────────────────────────── */}
+        {/* ── Header ─────────────────────────────────────────────────────────── */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <p className="text-green-400 text-xs font-mono uppercase tracking-widest mb-1">
               Master Plan Architect
             </p>
             <h1 className="text-white text-3xl font-bold tracking-tight">MPA Terminal</h1>
-            <p className="text-white/35 text-sm mt-1">
-              MACH Enterprise · Sovereign Protocols · State Machine Architecture · Powered by Groq
+            <p className="text-white/30 text-sm mt-1">
+              MACH · Sovereign · State Machine · Edge-CRDT · Nobel-Grade Math · Groq
             </p>
           </div>
-          {/* Model selector */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             {GROQ_MODELS.map((m) => (
               <button
                 key={m.id}
@@ -227,7 +273,7 @@ export default function Dashboard() {
                 className={`text-xs font-mono px-3 py-1.5 rounded-lg border transition-colors ${
                   model === m.id
                     ? "border-green-400/70 bg-green-400/10 text-green-400"
-                    : "border-white/10 text-white/30 hover:text-white/60 hover:border-white/20"
+                    : "border-white/10 text-white/30 hover:text-white/60"
                 }`}
               >
                 {m.label}
@@ -237,17 +283,15 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── Quick Templates ───────────────────────────────────────── */}
+        {/* ── Quick Templates ─────────────────────────────────────────────────── */}
         <div>
-          <p className="text-white/25 text-xs font-mono uppercase tracking-wider mb-2">
-            Quick Templates
-          </p>
+          <p className="text-white/25 text-xs font-mono uppercase tracking-wider mb-2">Quick Templates</p>
           <div className="flex gap-2 flex-wrap">
             {INDUSTRY_TEMPLATES.map((t, i) => (
               <button
                 key={t.label}
                 onClick={() => applyTemplate(i)}
-                className="text-xs font-mono px-3 py-1.5 rounded-lg border border-white/10 text-white/35 hover:text-green-400 hover:border-green-400/40 transition-colors"
+                className="text-xs font-mono px-3 py-1.5 rounded-lg border border-white/10 text-white/30 hover:text-green-400 hover:border-green-400/40 transition-colors"
               >
                 {t.label}
               </button>
@@ -255,7 +299,37 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── Vault / Control Panel ─────────────────────────────────── */}
+        {/* ── Intelligence Layer Toggles ──────────────────────────────────────── */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <p className="text-white/25 text-xs font-mono uppercase tracking-wider">
+              Intelligence Layers
+            </p>
+            {activeLayers > 0 && (
+              <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-green-400/20 text-green-400 border border-green-400/30">
+                {activeLayers} active
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <ToggleChip
+              active={mathDominance}
+              onChange={setMathDominance}
+              accent="violet"
+              label="Singularity-Edge Math"
+              sublabel="CRDTs · Vickrey Auctions · Design by Contract · Web Workers"
+            />
+            <ToggleChip
+              active={singularityIntelligence}
+              onChange={setSingularityIntelligence}
+              accent="amber"
+              label="Singularity Intelligence Layer"
+              sublabel="Kelly / Myerson / Pearl Causality / ZKP / TDA / Rough Paths / HJB"
+            />
+          </div>
+        </div>
+
+        {/* ── Control Panel / Vault ────────────────────────────────────────────── */}
         <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6 space-y-5">
 
           {/* Master Objective */}
@@ -292,9 +366,7 @@ export default function Dashboard() {
               <label className="text-white/50 text-xs font-mono uppercase tracking-wider">
                 Target Context / URL
               </label>
-              <span className="text-white/20 text-xs font-mono">
-                ~{estTokens} tokens input
-              </span>
+              <span className="text-white/20 text-xs font-mono">~{estTokens} tokens input</span>
             </div>
             <textarea
               value={targetContext}
@@ -317,18 +389,13 @@ export default function Dashboard() {
                 className="w-full bg-black border border-white/20 text-green-400 text-sm font-mono rounded-lg px-4 py-3 focus:outline-none focus:border-green-400/60 appearance-none cursor-pointer transition-colors"
               >
                 {DOMINANCE_PROTOCOLS.map((p) => (
-                  <option key={p.id} value={p.id} className="bg-black">
-                    {p.label}
-                  </option>
+                  <option key={p.id} value={p.id} className="bg-black">{p.label}</option>
                 ))}
               </select>
               {selectedProto && (
-                <p className="mt-1.5 text-white/20 text-xs font-mono">
-                  {selectedProto.description}
-                </p>
+                <p className="mt-1.5 text-white/20 text-xs font-mono">{selectedProto.description}</p>
               )}
             </div>
-
             <div>
               <label className="block text-white/50 text-xs font-mono uppercase tracking-wider mb-2">
                 Custom Directives{" "}
@@ -337,9 +404,9 @@ export default function Dashboard() {
               <textarea
                 value={customDirectives}
                 onChange={(e) => setCustomDirectives(e.target.value)}
-                placeholder="e.g., 'Ensure MPD uses Tailwind v4', 'Do not use Redux'."
+                placeholder="e.g., 'Use Tailwind v4', 'Avoid Redux'."
                 rows={3}
-                className="w-full bg-black border border-white/20 text-white/70 text-sm rounded-lg px-4 py-3 placeholder-white/15 focus:outline-none focus:border-green-400/50 transition-colors resize-y font-mono text-xs leading-relaxed"
+                className="w-full bg-black border border-white/20 text-white/70 text-xs rounded-lg px-4 py-3 placeholder-white/15 focus:outline-none focus:border-green-400/50 transition-colors resize-y font-mono leading-relaxed"
               />
             </div>
           </div>
@@ -371,7 +438,7 @@ export default function Dashboard() {
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                 {apiKey && !showKey && (
-                  <span className="text-white/25 text-xs font-mono">
+                  <span className="text-white/20 text-xs font-mono hidden sm:inline">
                     {maskKey(apiKey)}
                   </span>
                 )}
@@ -390,14 +457,11 @@ export default function Dashboard() {
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center pt-1">
             <div className="flex-1 w-full">
               <div className="flex justify-between mb-2">
-                <label className="text-white/50 text-xs font-mono uppercase tracking-wider">
-                  Creativity
-                </label>
+                <label className="text-white/50 text-xs font-mono uppercase tracking-wider">Creativity</label>
                 <span className="text-white/40 text-xs font-mono">{temperature.toFixed(1)}</span>
               </div>
               <input
-                type="range"
-                min={0.1} max={1.0} step={0.1}
+                type="range" min={0.1} max={1.0} step={0.1}
                 value={temperature}
                 onChange={(e) => setTemperature(parseFloat(e.target.value))}
                 className="w-full accent-green-400"
@@ -423,48 +487,37 @@ export default function Dashboard() {
             </button>
           </div>
 
-          {/* MACH + Sovereign Pillars Legend */}
-          <div className="pt-4 border-t border-white/10 grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {[
-              ["P1", "Predictive Maintenance"],
-              ["P2", "Dynamic RTB Engine"],
-              ["P3", "Forward Lifecycle SLAs"],
-              ["P4", "Tokenized Ledger"],
-              ["P5", "Federated Learning Telemetry"],
-              ["P6", "CLV Maximization"],
-              ["S1", "State Machine (XState)"],
-              ["S2", "Protocol Dominance"],
-              ["S3", "AMM Pricing Engine"],
-              ["S4", "Zero-Trust JWT"],
-              ["S5", "AOP Cross-Cutting"],
-              ["S6", "DNA Watermark"],
-            ].map(([code, label]) => (
-              <div key={code} className="flex items-center gap-2">
-                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${code.startsWith("S") ? "bg-blue-400/50" : "bg-green-400/50"}`} />
-                <span className="text-white/20 text-xs font-mono">
-                  {code}: {label}
-                </span>
-              </div>
-            ))}
+          {/* Active layers summary */}
+          <div className="pt-4 border-t border-white/10">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                ["CORE", "MACH + Sovereign + AMM", true],
+                ["CRDT", "Edge Math + Vickrey", mathDominance],
+                ["ZKP", "Nobel Intelligence Layer", singularityIntelligence],
+                ["AOP", "Cross-Cutting Always On", true],
+              ].map(([code, label, on]) => (
+                <div key={String(code)} className="flex items-center gap-2">
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${on ? "bg-green-400/70" : "bg-white/10"}`} />
+                  <span className={`text-xs font-mono ${on ? "text-white/30" : "text-white/10"}`}>
+                    {String(code)}: {String(label)}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* ── Error ────────────────────────────────────────────────── */}
+        {/* ── Error ────────────────────────────────────────────────────────────── */}
         {error && (
           <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3">
             <p className="text-red-400 text-xs font-mono whitespace-pre-wrap">{error}</p>
           </div>
         )}
 
-        {/* ── Output ───────────────────────────────────────────────── */}
-        <PayloadViewer
-          payload={payload}
-          tokensUsed={tokensUsed}
-          durationMs={durationMs}
-          model={activeModel}
-        />
+        {/* ── Output ───────────────────────────────────────────────────────────── */}
+        <PayloadViewer payload={payload} tokensUsed={tokensUsed} durationMs={durationMs} model={activeModel} />
 
-        {/* ── Projects Vault ───────────────────────────────────────── */}
+        {/* ── Project Vault ─────────────────────────────────────────────────────── */}
         <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden">
           <div className="px-4 py-3 border-b border-white/10">
             <p className="text-white/50 text-xs font-mono uppercase tracking-widest">
@@ -472,69 +525,47 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="p-4">
-            {/* Save row */}
             <div className="flex gap-2">
               <input
                 type="text"
                 value={projectLabel}
                 onChange={(e) => setProjectLabel(e.target.value)}
-                placeholder="Project name (optional, defaults to entity)"
-                className="flex-1 bg-black border border-white/15 text-white text-xs rounded-lg px-3 py-2 placeholder-white/15 focus:outline-none focus:border-green-400/40 transition-colors font-mono"
                 onKeyDown={(e) => { if (e.key === "Enter") saveProject(); }}
+                placeholder="Project name (optional)"
+                className="flex-1 bg-black border border-white/15 text-white text-xs rounded-lg px-3 py-2 placeholder-white/15 focus:outline-none focus:border-green-400/40 transition-colors font-mono"
               />
               <button
                 onClick={saveProject}
                 disabled={!targetEntity.trim()}
-                className="text-xs font-mono px-4 py-2 rounded-lg bg-green-400/10 border border-green-400/30 text-green-400 hover:bg-green-400/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                className="text-xs font-mono px-4 py-2 rounded-lg bg-green-400/10 border border-green-400/30 text-green-400 hover:bg-green-400/20 transition-colors disabled:opacity-40 whitespace-nowrap"
               >
                 Save Context
               </button>
             </div>
-
-            {/* Project list */}
-            {projects.length > 0 && (
+            {projects.length > 0 ? (
               <div className="mt-3 space-y-1.5 max-h-52 overflow-y-auto">
                 {projects.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center justify-between gap-3 bg-black/30 rounded-lg px-3 py-2 border border-white/5"
-                  >
-                    <button
-                      onClick={() => loadProject(p)}
-                      className="flex-1 text-left min-w-0"
-                    >
-                      <p className="text-white/70 text-xs font-semibold truncate hover:text-green-400 transition-colors">
-                        {p.label}
-                      </p>
+                  <div key={p.id} className="flex items-center gap-3 bg-black/30 rounded-lg px-3 py-2 border border-white/5">
+                    <button onClick={() => loadProject(p)} className="flex-1 text-left min-w-0">
+                      <p className="text-white/70 text-xs font-semibold truncate hover:text-green-400 transition-colors">{p.label}</p>
                       <p className="text-white/25 text-xs font-mono mt-0.5">
                         {new Date(p.createdAt).toLocaleDateString()} · {p.protocol}
                       </p>
                     </button>
-                    <button
-                      onClick={() => deleteProject(p.id)}
-                      className="text-white/20 hover:text-red-400 text-xs font-mono transition-colors shrink-0"
-                    >
-                      ×
-                    </button>
+                    <button onClick={() => deleteProject(p.id)} className="text-white/20 hover:text-red-400 text-sm font-mono transition-colors shrink-0">×</button>
                   </div>
                 ))}
               </div>
-            )}
-
-            {projects.length === 0 && (
+            ) : (
               <p className="mt-3 text-white/15 text-xs font-mono text-center py-4">
-                No saved projects yet. Fill in the fields above and click &quot;Save Context&quot;.
+                No saved projects. Fill the fields above and click &quot;Save Context&quot;.
               </p>
             )}
           </div>
         </div>
 
-        {/* ── Prompt History ───────────────────────────────────────── */}
-        <PromptHistory
-          entries={history}
-          onLoad={handleLoadHistory}
-          onClear={handleClearHistory}
-        />
+        {/* ── Prompt History ────────────────────────────────────────────────────── */}
+        <PromptHistory entries={history} onLoad={handleLoadHistory} onClear={handleClearHistory} />
 
       </div>
     </div>
