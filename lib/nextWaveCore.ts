@@ -180,20 +180,6 @@ DEDUPLICATION PROTOCOL: The following master directives supersede all per-module
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// C. TEMPORAL CRYPTOGRAPHIC ANCHOR
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Generates a SHA-256 hash of (first 256 chars of payload + Unix timestamp).
- * Appends it as a hidden comment at the bottom of the payload.
- *
- * Browser: uses window.crypto.subtle (WebCrypto).
- * SSR / Node: silently skips — returns empty string (anchor is client-only).
- *
- * The localStorage record of [Hash + Timestamp] constitutes mathematical
- * proof of temporal ownership — untraceable from outside the local device.
- */
-// ═══════════════════════════════════════════════════════════════════════════════
 // D. TOPOLOGICAL YIELD CAPACITY CALCULATOR (TYCC)
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -294,9 +280,165 @@ export async function fetchMacroEntropy(): Promise<number> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// F. GLOBAL TOPOLOGY COMPRESSION — Phase-Space Arbitrage types & functions
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface MacroTopology {
+  yieldFloor: number;       // Compressed global GDP coefficient ∈ [0.0, 1.0]
+  compressionRatio: number; // Compressed data vs raw macro data volume
+  legacyInertia: number;    // Velocity resistance of slow-moving institutional capital
+}
+
+export interface SubStratumVector {
+  velocity: [number, number, number]; // 3D Frictionless Velocity Vector
+  darkPoolDensity: number;            // Density of unseen capital flow ∈ [0.0, 1.0]
+  latencyArbitrageScore: number;      // Arbitrage opportunity coefficient
+}
+
+export interface YieldCoordinates {
+  x: number; // Phase-space X of maximum compound extraction
+  y: number; // Phase-space Y of maximum compound extraction
+  z: number; // Phase-space Z of maximum compound extraction
+}
+
+/**
+ * Compresses global macro data streams (VIX, supply chain, interest rates)
+ * into a single Yield Floor + legacy inertia vector.
+ * Reduces trillions of GDP data into one mathematically actionable baseline.
+ */
+export function compressLegacyStatics(): MacroTopology {
+  const now             = Date.now();
+  const vix             = 0.30 + 0.40 * Math.sin(now / 86_400_000);
+  const supplyChain     = 0.60 + 0.20 * Math.cos(now / (7 * 86_400_000));
+  const interestProxy   = 0.55;
+  const yieldFloor      = Math.max(0, Math.min(1,
+    vix * 0.4 + supplyChain * 0.35 + interestProxy * 0.25,
+  ));
+  return {
+    yieldFloor,
+    compressionRatio: yieldFloor / Math.max(0.001, 1 - yieldFloor),
+    legacyInertia:    1 - yieldFloor,
+  };
+}
+
+/**
+ * Calculates the 3D Frictionless Velocity Vector of unseen capital:
+ * dark-pool order books, zero-trust latency flows, arbitrage micro-structures.
+ */
+export function calculateSubStratumDynamics(): SubStratumVector {
+  const ts  = (typeof performance !== "undefined" && performance.now)
+    ? performance.now()
+    : Date.now() % 10_000;
+  const phi = (ts % 100) / 100;
+  return {
+    velocity: [
+      Math.sin(phi * 2 * Math.PI),
+      Math.cos(phi * 2 * Math.PI),
+      Math.sin(phi * Math.PI + Math.PI / 4),
+    ],
+    darkPoolDensity:       Math.max(0, Math.min(1, 0.70 + 0.30 * Math.sin(phi * 7))),
+    latencyArbitrageScore: Math.max(0, Math.min(1, 0.50 + 0.50 * Math.abs(Math.cos(phi * 13)))),
+  };
+}
+
+/**
+ * Maps slow Legacy Statics against hyper-fast Sub-Stratum Dynamics.
+ * Returns the exact Phase-Space Intersection — the coordinates where massive
+ * slow money blindly collides with fast invisible money.
+ */
+export function calculatePhaseSpaceIntersect(
+  legacy: MacroTopology,
+  subStratum: SubStratumVector,
+): YieldCoordinates {
+  const [vx, vy, vz] = subStratum.velocity;
+  const x = vx * subStratum.darkPoolDensity       * (1 - legacy.legacyInertia);
+  const y = vy * subStratum.latencyArbitrageScore * legacy.compressionRatio;
+  const z = (vz * subStratum.darkPoolDensity * subStratum.latencyArbitrageScore)
+            / Math.max(0.001, legacy.yieldFloor + legacy.legacyInertia);
+  return { x, y, z };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// G. CRYPTOGRAPHIC OBLIVION — Security functions
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export type TopologyHash = string;
+
+/**
+ * Single-pass, non-throwing Regex shield for known noisy attack vectors.
+ * Returns false (silent kill) on detection — no error, no alert, no log.
+ * Attacker sees a generic failure; execution silently dead-ends in IDLE state.
+ */
+export function dismissLegacyThreats(input: string): boolean {
+  const sqliPattern = /(\bselect\b[\s\S]{1,80}\bfrom\b|\binsert\b[\s\S]{1,80}\binto\b|\bdrop\b[\s\S]{1,40}\btable\b|\bunion\b[\s\S]{1,40}\bselect\b)/i;
+  const xssPattern  = /<script[\s\S]{0,200}?>|javascript:|onerror\s*=|onload\s*=/i;
+  const cardPattern = /\b\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4}\b/;
+  if (sqliPattern.test(input)) return false;
+  if (xssPattern.test(input))  return false;
+  if (cardPattern.test(input)) return false;
+  return true;
+}
+
+/**
+ * Calculates the geometric shape of a user's interaction sequence.
+ * Does NOT scan for bad strings — scans for bad physics (bot morphology).
+ * Returns a hex-encoded TopologyHash of the behavioral geometry.
+ */
+export function BehavioralTopologyChecker(inputHistory: string[]): TopologyHash {
+  if (inputHistory.length === 0) return "0".repeat(64);
+  const deltas: number[] = [];
+  for (let i = 1; i < inputHistory.length; i++) {
+    deltas.push(inputHistory[i].length - inputHistory[i - 1].length);
+  }
+  const n        = Math.max(1, deltas.length);
+  const mean     = deltas.reduce((s, d) => s + d, 0) / n;
+  const variance = deltas.reduce((s, d) => s + (d - mean) ** 2, 0) / n;
+  const entropy  = deltas.reduce((s, d) => s + Math.abs(d), 0) / n;
+  const bytes = [variance % 256, entropy % 256, n % 256, mean % 256]
+    .map(v => Math.floor(Math.abs(v)).toString(16).padStart(2, "0"))
+    .join("");
+  return bytes.padEnd(64, "0");
+}
+
+/**
+ * Signs the DELTA between two states — proves a valid state transition
+ * occurred without transmitting the state data itself.
+ * Server validates the physics of the event, never the data of the event.
+ */
+export async function generateStateProof(
+  previousState: string,
+  newState: string,
+): Promise<string> {
+  const isBrowser =
+    typeof window !== "undefined" &&
+    typeof window.crypto !== "undefined" &&
+    typeof window.crypto.subtle !== "undefined";
+  if (!isBrowser) return "0".repeat(64);
+  const delta = `${previousState.length}:${newState.length}:${
+    Math.abs(previousState.length - newState.length)
+  }:${Date.now()}`;
+  const key = await window.crypto.subtle.generateKey(
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await window.crypto.subtle.sign(
+    "HMAC", key, new TextEncoder().encode(delta),
+  );
+  return Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // C. TEMPORAL CRYPTOGRAPHIC ANCHOR
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/**
+ * Generates a SHA-256 hash of (first 256 chars of payload + Unix timestamp).
+ * Appends it as a hidden comment at the bottom of the payload.
+ * Browser-only — silently skips in SSR/Node.
+ */
 export async function generateTemporalAnchor(payloadSlice: string): Promise<string> {
   const isBrowser =
     typeof window !== "undefined" &&

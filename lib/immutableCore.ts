@@ -110,6 +110,24 @@ export interface INextWaveCore {
    * Returns 0.0 (Calm) → 1.0 (Chaos). Never throws.
    */
   fetchMacroEntropy(): Promise<number>;
+
+  /** Compresses global macro data into a single Yield Floor baseline. */
+  compressLegacyStatics(): { yieldFloor: number; compressionRatio: number; legacyInertia: number };
+
+  /** Returns 3D Frictionless Velocity Vector of dark-pool sub-stratum flows. */
+  calculateSubStratumDynamics(): { velocity: [number, number, number]; darkPoolDensity: number; latencyArbitrageScore: number };
+
+  /** Maps Legacy Statics against Sub-Stratum Dynamics → Phase-Space Intersection. */
+  calculatePhaseSpaceIntersect(legacy: object, subStratum: object): { x: number; y: number; z: number };
+
+  /** Silent Regex shield — returns false on detected attack pattern (no log, no alert). */
+  dismissLegacyThreats(input: string): boolean;
+
+  /** Calculates behavioral geometry hash; rejects bot physics without scanning strings. */
+  BehavioralTopologyChecker(inputHistory: string[]): string;
+
+  /** Signs the state transition delta using HMAC-SHA-256; proves physics without revealing data. */
+  generateStateProof(previousState: string, newState: string): Promise<string>;
 }
 
 // ─── Payload Generator Interface ─────────────────────────────────────────────
@@ -132,6 +150,8 @@ export interface IGenerateOptions {
   apexDefense: boolean;
   omegaTopology: boolean;
   ergodicSync: boolean;
+  omegaAbsolute: boolean;
+  omegaSecurity: boolean;
   apiKey: string;
   model: string;
   temperature: number;

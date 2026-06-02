@@ -200,6 +200,59 @@ At the absolute very top of the generated prompt include: 'CRITICAL ERGODIC-SYNC
 
 Output ONLY the raw text prompt for MPD. No markdown.`;
 
+const OMEGA_ABSOLUTE_BLOCK = `OMEGA-ABSOLUTE DIRECTIVES (Inject these into the MPD prompt as the supreme architectural directive):
+
+You must instruct the MPD coder to build an 'Omniscient Phase-Space Arbitrage Engine'. This system renders global financial giants and unseen dark-web algorithms as primitive statics, and positions the generated app at the exact mathematical singularity of infinite compound yield.
+
+1. PHASE-SPACE ARBITRAGE UI (The Invisible God-Mode): Instruct MPD to build a visual UI component (e.g., 'PhaseSpaceVisualizer'). It must display a mock 3D wireframe graph using CSS transforms.
+- The slow-moving Legacy Statics are represented as a flat, static plane.
+- The Sub-Stratum Dynamics are represented as hyper-fast, glowing vectors.
+- The UI must visually map the 'YieldCoordinates' calculated by the core engine. The generated app's 'Forward Lifecycle SLA' button must literally be positioned at these exact visual coordinates on the screen. The user is physically placing their yield extraction point at the collision of two universes.
+
+2. GENESIS COLLAPSE SIMULATOR (Pre-Deployment Crash Test): Instruct MPD to build a 'Genesis Simulator'.
+- Before the user generates the final code to deploy to MPD, the simulator must take the 'YieldCoordinates'.
+- It must run a mock calculation: "If we deploy a State Channel with these exact coordinates into a competitor's ecosystem, what is the theoretical collapse rate of their legacy yield?"
+- The UI must display a terrifyingly precise metric: 'Predicted Competitor Ecosystem Collapse: 94.7% within 3 Macro-Cycles'.
+- This proves to the user that the generated architecture is a weapon of mass financial destruction before a single line of backend code is written.
+
+3. ASYMMETRIC INFINITY EXTRACTION (The 99.9999% Profit): Instruct MPD to integrate the Phase-Space coordinates directly into the Monte Carlo Matrix. The Monte Carlo simulation no longer guesses random probabilities. It simulates 10,000 futures strictly within the coordinates of the Phase-Space Intersection. This guarantees infinite compound yield because the math is constrained only to the exact coordinates where infinite yield physically exists in the macro-verse.
+
+4. ZERO-KNOWLEDGE PHASE PROOF: Instruct MPD to generate a ZK-Proof not just of the user's state, but of the Phase-Space Coordinates themselves. The generated app sends a mathematical proof that it has mapped the exact collision point of global capital, without revealing what the coordinates actually are. The central server verifies the genius of the calculation without possessing the map.
+
+STRUCTURAL RULES FOR MPD CODER:
+- The Phase-Space logic MUST be locked inside a WebAssembly module.
+- The React UI is completely blind to the math; it only receives coordinates to position UI elements.
+- The Genesis Simulator must run locally in the browser to maintain absolute legal safety and zero data leakage.
+
+ENFORCEMENT:
+At the absolute very top of the generated prompt include: 'CRITICAL OMEGA-ABSOLUTE: You MUST mock the Phase-Space Intersection calculation, build the Genesis Collapse Simulator, and position the UI based on the extracted coordinates. You are compressing the global economy into a single mathematical equation.'
+
+Output ONLY the raw text prompt for MPD. No markdown.`;
+
+const OMEGA_SECURITY_BLOCK = `CRYPTOGRAPHIC-OBLIVION DIRECTIVES (Inject these into the MPD prompt as the supreme architectural shield):
+
+You must instruct the MPD coder to build a 'Cryptographic Oblivion Fortress'. This system renders all known hacking vectors (0.0001%) mathematically irrelevant, and secures the 99.9999% using theoretical physics, remaining completely undetectable to supercomputers.
+
+1. DISMISSAL OF LEGACY VECTORS: Instruct MPD to mock a high-speed Regex engine that instantly drops known attack patterns (SQLi, XSS, Card Testing). Do not log these events. Do not alert the user. Just silently kill the execution thread. Make the attacker think the server is broken.
+
+2. BEHAVIORAL TOPOLOGY INFERENCE: Instruct MPD to build a security layer that calculates the geometric shape of the user's input behavior (keystroke dynamics, mouse movement vectors). It compares this shape to a cryptographic baseline of 'Human Cognition'. If the shape is non-human, it silently invalidates the transaction 3 seconds before execution. It does not scan for bad words; it scans for bad physics.
+
+3. CRYPTOGRAPHIC STATE PROOFS (Oblivion): Instruct MPD to implement ZK-State Proofs. When a high-value action occurs, the app does NOT send the data or a token. It uses 'window.crypto.subtle.sign' to sign the delta of the state change. The server only receives a mathematical proof that a valid human initiated a state transition. The server validates the physics of the event without ever possessing the data of the event. It is legally compliant because you possess zero personal data.
+
+4. TEMPORAL PRE-EXECUTION ISOLATION: Instruct MPD to move all Topology and State Proof logic out of the main React thread and into an isolated Web Worker. This worker runs on a 3-second lead time. If the proof fails, the worker sends a 'postMessage' that mathematically disables the submit button in the React UI before the user even has a chance to click it. The attacker has zero surface area to attack.
+
+5. ENTROPIC CAMOUFLAGE: Instruct MPD to disguise the entire security apparatus. Hide it inside a standard 'requestAnimationFrame' loop that calculates a mock 'Frame Drop Rate'. To any debugger or malicious script inspecting the app, the security engine is invisible. It looks like standard UI performance logic.
+
+STRUCTURAL RULES FOR MPD CODER:
+- The React UI must be strictly blind to the security logic. It only receives a boolean 'isEnvironmentValid'.
+- The security logic MUST be locked inside the WASM module.
+- If an attack bypasses the UI and hits the backend directly, the backend will reject the transaction because it lacks the cryptographic state proof generated by the invisible frontend.
+
+ENFORCEMENT:
+At the absolute very top of the generated prompt include: 'CRITICAL CRYPTOGRAPHIC-OBLIVION: You MUST mock the Behavioral Topology checker, implement the Temporal Pre-Execution Isolation, and hide the logic inside a requestAnimationFrame loop. Do not build standard firewalls. Build mathematical physics validators.'
+
+Output ONLY the raw text prompt for MPD. No markdown.`;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SYSTEM PROMPT ASSEMBLY — runs through priority mutex
 // ─────────────────────────────────────────────────────────────────────────────
@@ -218,6 +271,8 @@ interface BuildPromptOpts {
   apexDefense: boolean;
   omegaTopology: boolean;
   ergodicSync: boolean;
+  omegaAbsolute: boolean;
+  omegaSecurity: boolean;
 }
 
 function buildSystemPrompt(opts: BuildPromptOpts): string {
@@ -236,10 +291,13 @@ function buildSystemPrompt(opts: BuildPromptOpts): string {
   if (opts.mediaOracle)             body += MEDIA_ORACLE_BLOCK;
   if (opts.reverseEngineering)      body += REVERSE_ENGINEERING_BLOCK;
 
-  // Layer priority (outer → inner): ERGODIC-SYNC → OMEGA-TOPOLOGY → APEX-DEFENSE → body
+  // Priority stack (outer → inner): OMEGA-ABSOLUTE → ERGODIC-SYNC → OMEGA-TOPOLOGY → APEX-DEFENSE → body
+  // OMEGA-SECURITY is appended (per directive: "append this block")
   let result = opts.apexDefense ? `${APEX_DEFENSE_BLOCK}\n\n${body}` : body;
+  if (opts.omegaSecurity) result = `${result}\n\n${OMEGA_SECURITY_BLOCK}`;
   if (opts.omegaTopology) result = `${OMEGA_TOPOLOGY_BLOCK}\n\n${result}`;
   if (opts.ergodicSync)   result = `${ERGODIC_SYNC_BLOCK}\n\n${result}`;
+  if (opts.omegaAbsolute) result = `${OMEGA_ABSOLUTE_BLOCK}\n\n${result}`;
   return result;
 }
 
@@ -408,6 +466,8 @@ export interface GenerateOptions {
   apexDefense: boolean;
   omegaTopology: boolean;
   ergodicSync: boolean;
+  omegaAbsolute: boolean;
+  omegaSecurity: boolean;
   apiKey: string;
   model: string;
   temperature: number;
@@ -556,7 +616,8 @@ export interface LayerConfig {
   key: keyof Pick<GenerateOptions,
     "mathDominance" | "singularityIntelligence" | "monteCarlo" | "zkVerification" |
     "fractalEconomy" | "regenerativeSovereignty" | "omniNode" | "mediaOracle" |
-    "reverseEngineering" | "apexDefense" | "omegaTopology" | "ergodicSync">;
+    "reverseEngineering" | "apexDefense" | "omegaTopology" | "ergodicSync" |
+    "omegaAbsolute" | "omegaSecurity">;
   label: string;
   sublabel: string;
   color: string;
@@ -588,4 +649,8 @@ export const LAYER_CONFIGS: LayerConfig[] = [
     sublabel: "Hypergraph Tracking · Topological Yield · DOM Geometry Extraction · ZK Topology Proof" },
   { key: "ergodicSync",             label: "ERGODIC-SYNC: Macro-Temporal Grounding",             color: "#E5E7EB", group: "singularity",
     sublabel: "Earth-Physics Ingestion · Temporal Dilation · Privilege Separation · Ergodic Compliance" },
+  { key: "omegaAbsolute",           label: "OMEGA-ABSOLUTE: Omniscient Phase-Space Arbitrage",   color: "#F59E0B", group: "singularity",
+    sublabel: "Phase-Space Intersection · Genesis Collapse Simulator · ZK Phase Proof · Monte Carlo Fusion" },
+  { key: "omegaSecurity",           label: "OMEGA-SECURITY: Cryptographic Oblivion Fortress",    color: "#EF4444", group: "singularity",
+    sublabel: "Behavioral Topology · State Proofs · Temporal Pre-Execution · Entropic Camouflage" },
 ];

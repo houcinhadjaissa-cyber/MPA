@@ -61,7 +61,7 @@ const INITIAL_LAYERS: LayerState = {
   mathDominance: false, singularityIntelligence: false, monteCarlo: false,
   zkVerification: false, fractalEconomy: false, regenerativeSovereignty: false,
   omniNode: false, mediaOracle: false, reverseEngineering: false, apexDefense: false,
-  omegaTopology: false, ergodicSync: false,
+  omegaTopology: false, ergodicSync: false, omegaAbsolute: false, omegaSecurity: false,
 };
 
 function layerReducer(state: LayerState, action: LayerAction): LayerState {
@@ -332,6 +332,8 @@ export default function Dashboard() {
   const apexLayer          = LAYER_CONFIGS.find(l => l.group === "apex")!;
   const omegaTopologyLayer = LAYER_CONFIGS.find(l => l.key === "omegaTopology")!;
   const ergodicSyncLayer   = LAYER_CONFIGS.find(l => l.key === "ergodicSync")!;
+  const omegaAbsoluteLayer = LAYER_CONFIGS.find(l => l.key === "omegaAbsolute")!;
+  const omegaSecurityLayer = LAYER_CONFIGS.find(l => l.key === "omegaSecurity")!;
 
   // ════════════════════════════════════════════════════════════════════════════════
   return (
@@ -612,6 +614,87 @@ export default function Dashboard() {
               <IosToggle active={layers.omegaTopology}
                 onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "omegaTopology" })}
                 color="#8B5CF6" />
+            </div>
+          </motion.div>
+
+          {/* OMEGA-ABSOLUTE — deep amber/gold overwhelming glow */}
+          <motion.div
+            animate={{
+              boxShadow: layers.omegaAbsolute
+                ? [
+                    "0 0 0 1px rgba(245,158,11,0.7),  0 0 24px rgba(245,158,11,0.18)",
+                    "0 0 0 1px rgba(251,191,36,0.7),  0 0 32px rgba(251,191,36,0.22)",
+                    "0 0 0 1px rgba(217,119,6,0.65),  0 0 20px rgba(217,119,6,0.16)",
+                    "0 0 0 1px rgba(245,158,11,0.7),  0 0 24px rgba(245,158,11,0.18)",
+                  ]
+                : "0 0 0 1px rgba(255,255,255,0.05)",
+            }}
+            transition={layers.omegaAbsolute
+              ? { duration: 3.5, repeat: Infinity, ease: "easeInOut" }
+              : { duration: 0.3 }}
+            className={`rounded-2xl px-6 pb-1 ${BG_CARD}`}
+          >
+            <div className="flex items-center gap-2 pt-5 pb-1">
+              <p className="text-[10px] font-mono uppercase tracking-widest"
+                style={{ color: layers.omegaAbsolute ? "rgba(245,158,11,0.7)" : "rgba(255,255,255,0.18)" }}>
+                Supreme Architectural Directive
+              </p>
+              {layers.omegaAbsolute && (
+                <span className="text-[10px] font-mono rounded-full px-2 py-0.5"
+                  style={{ color: "#F59E0B", border: "1px solid rgba(245,158,11,0.35)" }}>ACTIVE</span>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-4 py-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold tracking-wide"
+                  style={{ color: layers.omegaAbsolute ? "#F59E0B" : "#9CA3AF" }}>
+                  {omegaAbsoluteLayer.label}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{omegaAbsoluteLayer.sublabel}</p>
+              </div>
+              <IosToggle active={layers.omegaAbsolute}
+                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "omegaAbsolute" })}
+                color="#F59E0B" />
+            </div>
+          </motion.div>
+
+          {/* OMEGA-SECURITY — fortified crimson glow */}
+          <motion.div
+            animate={{
+              boxShadow: layers.omegaSecurity
+                ? [
+                    "0 0 0 1px rgba(239,68,68,0.7),   0 0 20px rgba(239,68,68,0.14)",
+                    "0 0 0 1px rgba(220,38,38,0.65),  0 0 28px rgba(220,38,38,0.18)",
+                    "0 0 0 1px rgba(239,68,68,0.7),   0 0 20px rgba(239,68,68,0.14)",
+                  ]
+                : "0 0 0 1px rgba(255,255,255,0.05)",
+            }}
+            transition={layers.omegaSecurity
+              ? { duration: 2, repeat: Infinity, ease: "easeInOut" }
+              : { duration: 0.3 }}
+            className={`rounded-2xl px-6 pb-1 ${BG_CARD}`}
+          >
+            <div className="flex items-center gap-2 pt-5 pb-1">
+              <p className="text-[10px] font-mono uppercase tracking-widest"
+                style={{ color: layers.omegaSecurity ? "rgba(239,68,68,0.65)" : "rgba(255,255,255,0.18)" }}>
+                Cryptographic Oblivion Fortress
+              </p>
+              {layers.omegaSecurity && (
+                <span className="text-[10px] font-mono rounded-full px-2 py-0.5"
+                  style={{ color: "#EF4444", border: "1px solid rgba(239,68,68,0.35)" }}>ACTIVE</span>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-4 py-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold tracking-wide"
+                  style={{ color: layers.omegaSecurity ? "#EF4444" : "#9CA3AF" }}>
+                  {omegaSecurityLayer.label}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{omegaSecurityLayer.sublabel}</p>
+              </div>
+              <IosToggle active={layers.omegaSecurity}
+                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "omegaSecurity" })}
+                color="#EF4444" />
             </div>
           </motion.div>
 
