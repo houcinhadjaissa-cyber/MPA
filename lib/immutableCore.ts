@@ -96,6 +96,20 @@ export interface INextWaveCore {
    * comment — proof of temporal IP ownership stored only in localStorage.
    */
   generateTemporalAnchor(payloadSlice: string): Promise<string>;
+
+  /**
+   * Topological Yield Capacity Calculator (TYCC).
+   * Treats interaction hyperedges as a mathematical graph; returns Betti-number-
+   * derived Yield Capacity ∈ [0.0, 1.0]. Never outputs a price.
+   */
+  calculateYieldCapacity(interactionGraph: number[][]): number;
+
+  /**
+   * Macro-Entropy Ingestion.
+   * Fetches real-world systemic entropy (Fear & Greed Index).
+   * Returns 0.0 (Calm) → 1.0 (Chaos). Never throws.
+   */
+  fetchMacroEntropy(): Promise<number>;
 }
 
 // ─── Payload Generator Interface ─────────────────────────────────────────────
@@ -116,6 +130,8 @@ export interface IGenerateOptions {
   mediaOracle: boolean;
   reverseEngineering: boolean;
   apexDefense: boolean;
+  omegaTopology: boolean;
+  ergodicSync: boolean;
   apiKey: string;
   model: string;
   temperature: number;

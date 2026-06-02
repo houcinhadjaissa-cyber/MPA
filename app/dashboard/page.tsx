@@ -61,6 +61,7 @@ const INITIAL_LAYERS: LayerState = {
   mathDominance: false, singularityIntelligence: false, monteCarlo: false,
   zkVerification: false, fractalEconomy: false, regenerativeSovereignty: false,
   omniNode: false, mediaOracle: false, reverseEngineering: false, apexDefense: false,
+  omegaTopology: false, ergodicSync: false,
 };
 
 function layerReducer(state: LayerState, action: LayerAction): LayerState {
@@ -329,6 +330,8 @@ export default function Dashboard() {
   const strategyLayers     = LAYER_CONFIGS.filter(l => l.group === "strategy");
   const intelligenceLayers = LAYER_CONFIGS.filter(l => l.group === "intelligence");
   const apexLayer          = LAYER_CONFIGS.find(l => l.group === "apex")!;
+  const omegaTopologyLayer = LAYER_CONFIGS.find(l => l.key === "omegaTopology")!;
+  const ergodicSyncLayer   = LAYER_CONFIGS.find(l => l.key === "ergodicSync")!;
 
   // ════════════════════════════════════════════════════════════════════════════════
   return (
@@ -570,6 +573,87 @@ export default function Dashboard() {
                 color="#30D158" />
             </div>
           </motion.div>
+
+          {/* OMEGA-TOPOLOGY — animated gradient border (ethereal metamorphic style) */}
+          <motion.div
+            animate={{
+              boxShadow: layers.omegaTopology
+                ? [
+                    "0 0 0 1px rgba(139,92,246,0.55), 0 0 14px rgba(139,92,246,0.12)",
+                    "0 0 0 1px rgba(6,182,212,0.55),  0 0 14px rgba(6,182,212,0.12)",
+                    "0 0 0 1px rgba(249,115,22,0.45),  0 0 14px rgba(249,115,22,0.10)",
+                    "0 0 0 1px rgba(139,92,246,0.55), 0 0 14px rgba(139,92,246,0.12)",
+                  ]
+                : "0 0 0 1px rgba(255,255,255,0.05)",
+            }}
+            transition={layers.omegaTopology
+              ? { duration: 4, repeat: Infinity, ease: "linear" }
+              : { duration: 0.3 }}
+            className={`rounded-2xl px-6 pb-1 ${BG_CARD}`}
+          >
+            <div className="flex items-center gap-2 pt-5 pb-1">
+              <p className="text-[10px] font-mono uppercase tracking-widest"
+                style={{ color: layers.omegaTopology ? "rgba(139,92,246,0.65)" : "rgba(255,255,255,0.18)" }}>
+                Singularity-Absolute Architecture
+              </p>
+              {layers.omegaTopology && (
+                <span className="text-[10px] font-mono rounded-full px-2 py-0.5"
+                  style={{ color: "#8B5CF6", border: "1px solid rgba(139,92,246,0.35)" }}>ACTIVE</span>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-4 py-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold tracking-wide"
+                  style={{ color: layers.omegaTopology ? "#8B5CF6" : "#9CA3AF" }}>
+                  {omegaTopologyLayer.label}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{omegaTopologyLayer.sublabel}</p>
+              </div>
+              <IosToggle active={layers.omegaTopology}
+                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "omegaTopology" })}
+                color="#8B5CF6" />
+            </div>
+          </motion.div>
+
+          {/* ERGODIC-SYNC — steady pulsing white glow (God-tier authority) */}
+          <motion.div
+            animate={{
+              boxShadow: layers.ergodicSync
+                ? [
+                    "0 0 0 0   rgba(255,255,255,0.12)",
+                    "0 0 18px 3px rgba(255,255,255,0.08)",
+                    "0 0 0 0   rgba(255,255,255,0.12)",
+                  ]
+                : "0 0 0 0 rgba(255,255,255,0)",
+            }}
+            transition={layers.ergodicSync
+              ? { duration: 2.8, repeat: Infinity, ease: "easeInOut" }
+              : { duration: 0.3 }}
+            className={`rounded-2xl px-6 pb-1 ${BG_CARD} ${layers.ergodicSync ? "border border-white/20" : "border border-white/5"}`}
+          >
+            <div className="flex items-center gap-2 pt-5 pb-1">
+              <p className="text-[10px] font-mono uppercase tracking-widest"
+                style={{ color: layers.ergodicSync ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.18)" }}>
+                God-Tier Macro-Temporal Architecture
+              </p>
+              {layers.ergodicSync && (
+                <span className="text-[10px] font-mono text-white/50 border border-white/20 rounded-full px-2 py-0.5">ACTIVE</span>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-4 py-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold tracking-wide"
+                  style={{ color: layers.ergodicSync ? "rgba(255,255,255,0.88)" : "#9CA3AF" }}>
+                  {ergodicSyncLayer.label}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{ergodicSyncLayer.sublabel}</p>
+              </div>
+              <IosToggle active={layers.ergodicSync}
+                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "ergodicSync" })}
+                color="rgba(220,220,220,0.9)" />
+            </div>
+          </motion.div>
+
         </div>
 
         {/* Payload Output */}

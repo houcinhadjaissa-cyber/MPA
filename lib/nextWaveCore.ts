@@ -193,6 +193,110 @@ DEDUPLICATION PROTOCOL: The following master directives supersede all per-module
  * The localStorage record of [Hash + Timestamp] constitutes mathematical
  * proof of temporal ownership — untraceable from outside the local device.
  */
+// ═══════════════════════════════════════════════════════════════════════════════
+// D. TOPOLOGICAL YIELD CAPACITY CALCULATOR (TYCC)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Treats user micro-interactions as a multi-dimensional hypergraph.
+ * Each inner array is a hyperedge (set of co-activated nodes).
+ * Calculates Betti numbers β₀ (components) and β₁ (cycles) via union-find.
+ * High Betti sum → user is in a state of "Cognitive Fluidity".
+ * Returns a normalized Yield Capacity float ∈ [0.0, 1.0].
+ * CRITICAL: This output is NEVER labeled as a price — it is a topological coefficient.
+ */
+export function calculateYieldCapacity(interactionGraph: number[][]): number {
+  if (!interactionGraph || interactionGraph.length === 0) return 0;
+
+  const allNodes = new Set<number>();
+  for (const hyperedge of interactionGraph) {
+    for (const node of hyperedge) allNodes.add(node);
+  }
+  const nodeCount = allNodes.size;
+  if (nodeCount === 0) return 0;
+
+  const parent = new Map<number, number>();
+  const rank   = new Map<number, number>();
+  for (const node of Array.from(allNodes)) { parent.set(node, node); rank.set(node, 0); }
+
+  function find(n: number): number {
+    if (parent.get(n) !== n) parent.set(n, find(parent.get(n)!));
+    return parent.get(n)!;
+  }
+  function union(a: number, b: number): boolean {
+    const ra = find(a), rb = find(b);
+    if (ra === rb) return false;
+    if ((rank.get(ra) ?? 0) < (rank.get(rb) ?? 0))      parent.set(ra, rb);
+    else if ((rank.get(ra) ?? 0) > (rank.get(rb) ?? 0)) parent.set(rb, ra);
+    else { parent.set(rb, ra); rank.set(ra, (rank.get(ra) ?? 0) + 1); }
+    return true;
+  }
+
+  let totalEdgePairs = 0;
+  let redundantEdges = 0;
+
+  for (const hyperedge of interactionGraph) {
+    for (let i = 0; i < hyperedge.length - 1; i++) {
+      for (let j = i + 1; j < hyperedge.length; j++) {
+        totalEdgePairs++;
+        if (!union(hyperedge[i], hyperedge[j])) redundantEdges++;
+      }
+    }
+  }
+
+  const roots = new Set<number>();
+  for (const node of Array.from(allNodes)) roots.add(find(node));
+  const beta0 = roots.size;            // connected components
+  const beta1 = Math.max(0, redundantEdges); // independent cycles
+
+  const bettiSum    = beta0 + beta1;
+  const denominator = Math.max(1, nodeCount + totalEdgePairs) * 0.6;
+  return Math.min(1.0, Math.max(0.0, bettiSum / denominator));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// E. MACRO-ENTROPY INGESTION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Fetches the Crypto Fear & Greed Index as a macro-systemic entropy proxy.
+ * Returns a normalized float: 0.0 = Absolute Calm, 1.0 = Extreme Systemic Chaos.
+ *
+ * Falls back to a time-of-day synthetic entropy oscillator if the API is
+ * unreachable. Never throws — always returns a usable number.
+ *
+ * timeDelta integration formula (for Worker injection):
+ *   timeDelta = baseTimeDelta * (1.5 - (macroEntropy * 1.2))
+ */
+export async function fetchMacroEntropy(): Promise<number> {
+  try {
+    const controller = new AbortController();
+    const timeoutId  = setTimeout(() => controller.abort(), 5_000);
+
+    const res = await fetch("https://api.alternative.me/fng/?limit=1", {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) throw new Error(`FNG API HTTP ${res.status}`);
+
+    const data = await res.json() as { data?: Array<{ value: string }> };
+    const raw  = parseInt(data?.data?.[0]?.value ?? "50", 10);
+    // FNG: 0 = Extreme Fear (max chaos), 100 = Extreme Greed (min chaos). Invert.
+    return Math.max(0, Math.min(1, (100 - raw) / 100));
+  } catch {
+    // Synthetic fallback: hour-of-day oscillation as deterministic entropy proxy.
+    // Peaks near market-open hours (09:00, 21:00) — troughs at 03:00, 15:00.
+    const hour      = new Date().getHours();
+    const synthetic = 0.5 + 0.35 * Math.sin((hour / 24) * 2 * Math.PI);
+    return Math.max(0, Math.min(1, synthetic));
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// C. TEMPORAL CRYPTOGRAPHIC ANCHOR
+// ═══════════════════════════════════════════════════════════════════════════════
+
 export async function generateTemporalAnchor(payloadSlice: string): Promise<string> {
   const isBrowser =
     typeof window !== "undefined" &&

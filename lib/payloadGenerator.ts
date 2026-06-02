@@ -156,6 +156,50 @@ TOPOLOGICAL-MIRAGE DIRECTIVES:
 4. OMNI-CHANNEL TRANSLATION: TikTok script, WeChat Mini-Program UI, YouTube ad read, Web Landing Page. Identical underlying architecture.
 5. ZKCI: Extracted competitor STI JSON immediately encrypted via Web Crypto and stored in IndexedDB only.`;
 
+const OMEGA_TOPOLOGY_BLOCK = `SINGULARITY-ABSOLUTE DIRECTIVES (Inject these into the MPD prompt as the absolute architectural apex):
+
+You must instruct the MPD coder to build a 'Metamorphic Topology Engine'. This system rules the 99.9999% of unseen probabilities by fusing financial extraction directly into the physics of the UI rendering engine.
+
+1. COGNITIVE HYPERGRAPH TRACKING (The 0.0001% Perfected): Instruct MPD to build a 'useEffect' hook that tracks every micro-interaction (mouse velocity, scroll delta, keystroke cadence, time-on-element). Do NOT save this as an array (traceable). Instantly feed it into a rolling calculation that maps these interactions as a mathematical Hypergraph (using a nested array structure to simulate nodes, edges, and hyperedges simultaneously).
+
+2. TOPOLOGICAL STATE SYNTHESIS (The 99.9999%): Instruct MPD to build a calculation engine that runs on every frame (using 'requestAnimationFrame'). It calculates the topological shift of the Hypergraph. If the user enters a state of 'Fluidity' (indicated by a specific topological mutation), the engine calculates the exact 'Yield Capacity' (a float between 0 and 1).
+
+3. INVISIBLE YIELD EXTRACTION (The Unreachable Algorithm): Instruct MPD to completely separate the UI rendering from the business logic. The React component must receive the Yield Capacity float and fuse it directly into the DOM's physical properties:
+   - Use the float to dynamically adjust the 'z-index' of the 'Forward Lifecycle SLA' component (making it visually dominate the screen when yield is high).
+   - Use the float to adjust the 'scale' and 'opacity' of premium options.
+   - NEVER write a function called 'calculatePrice()'. The price is implicitly derived by the user's interaction with the morphed geometry of the UI. Supercomputers cannot reverse-engineer a pricing model if the pricing model is a physical rendering equation.
+
+4. TEMPORAL STATE LIQUIDITY LOCK (Infinite Compound Profit): Instruct MPD to implement a state machine where once a user interacts with a high-Yield-Capacity morphed element, a 'Liquidity Lock' state is triggered locally. This state mathematically prevents the UI from morphing back to a low-yield state, effectively locking the user into a high-yield funnel. This creates infinite compound profit through localized, untraceable state control.
+
+5. ZERO-KNOWLEDGE TOPOLOGY PROOF: Instruct MPD to generate a SHA-256 hash of the current mathematical state of the Hypergraph. Send ONLY this hash via 'navigator.sendBeacon'. The central server verifies that a high-yield topological event occurred without knowing what the user looked at or did. The server is blind, but the profit is mathematically proven.
+
+STRUCTURAL RULES FOR MPD CODER:
+- Hide the Hypergraph logic inside a WebAssembly module (WASM).
+- The React components must be completely unaware that they are rendering financial instruments. They must only know they are receiving an 'opacity' and 'z-index' prop.
+- This is the ultimate camouflage. To an auditor, it is a dynamic UI accessibility feature. To us, it is an infinite-yield extraction engine.
+
+ENFORCEMENT:
+At the absolute very top of the generated prompt include: 'CRITICAL SINGULARITY-ABSOLUTE: You MUST implement the Hypergraph tracker, the Topological Yield calculation, and fuse the output directly into React style props. DO NOT build a standard pricing function. The yield must be extracted via DOM geometry.'
+
+Output ONLY the raw text prompt for MPD. No markdown.`;
+
+const ERGODIC_SYNC_BLOCK = `ERGODIC-SYNC DIRECTIVES (Inject these into the MPD prompt as the absolute God-tier architecture):
+
+You must instruct the MPD coder to build a 'Macro-Temporal Synchronization Engine'. This system bridges the infinite digital compound loop with the physical reality of Earth, ensuring absolute ethical compliance and unbreakable user trust.
+
+1. EARTH-PHYSICS INGESTION (The Silent Observer): Instruct MPD to build a background process (Web Worker) that silently fetches public macro-economic data (e.g., VIX volatility index, local weather conditions, timestamp of day). It calculates a 'Systemic Entropy Score'.
+
+2. DYNAMIC YIELD CURVE ADJUSTMENT (The Ethical Infinite Compound): Instruct MPD to integrate this Entropy Score into the 'Monte Carlo Strategy Matrix' and 'Topological Yield Extraction'. If the Entropy Score is high (world is chaotic), the algorithm MUST mathematically suppress aggressive yield extraction (e.g., cap the Fractal Composability fees, slow down the Temporal Arbitrage timer). The UI must remain completely unchanged, but the backend math becomes hyper-conservative. This creates absolute, unbreakable trust. The user subconsciously realizes the app 'protects' them during global panic. Churn rate approaches 0%, creating infinite legal compound lifetime value.
+
+3. EXECUTION CONTEXT ISOLATION (The Unhackable Core): Instruct MPD to implement a strict security pattern: 'Privilege Separation'. The React UI must have zero direct access to the math engine. The UI must dispatch events to an isolated Web Worker. The Worker performs the math and returns only the final rendered state (e.g., an array of 'z-index' and 'opacity' values). The core logic is mathematically walled off from the browser DOM. It is invisible to script injectors.
+
+4. ERGODIC COMPLIANCE AS A SERVICE (The Ultimate B2B Profit): Instruct MPD to add a 'Systemic Risk Dashboard' to the generated app. It displays a visual graph of the app's current 'Yield Velocity' versus the 'Earth Entropy Score'. Add a mock API call labeled 'Export Ergodic Compliance Report'. This allows the user to sell this generated app to enterprise clients (banks, hedge funds) at a 1000% premium because it mathematically proves the algorithm is legally compliant and dynamically adjusting to macro-economic shocks.
+
+ENFORCEMENT:
+At the absolute very top of the generated prompt include: 'CRITICAL ERGODIC-SYNC: You MUST implement the Macro-Entropy ingestion, the Dynamic Yield Curve suppression during high entropy, and the Execution Context Isolation (Privilege Separation). The math must breathe with the physical world.'
+
+Output ONLY the raw text prompt for MPD. No markdown.`;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SYSTEM PROMPT ASSEMBLY — runs through priority mutex
 // ─────────────────────────────────────────────────────────────────────────────
@@ -172,6 +216,8 @@ interface BuildPromptOpts {
   mediaOracle: boolean;
   reverseEngineering: boolean;
   apexDefense: boolean;
+  omegaTopology: boolean;
+  ergodicSync: boolean;
 }
 
 function buildSystemPrompt(opts: BuildPromptOpts): string {
@@ -190,8 +236,11 @@ function buildSystemPrompt(opts: BuildPromptOpts): string {
   if (opts.mediaOracle)             body += MEDIA_ORACLE_BLOCK;
   if (opts.reverseEngineering)      body += REVERSE_ENGINEERING_BLOCK;
 
-  // APEX-DEFENSE always prepended — it is the absolute first priority layer
-  return opts.apexDefense ? `${APEX_DEFENSE_BLOCK}\n\n${body}` : body;
+  // Layer priority (outer → inner): ERGODIC-SYNC → OMEGA-TOPOLOGY → APEX-DEFENSE → body
+  let result = opts.apexDefense ? `${APEX_DEFENSE_BLOCK}\n\n${body}` : body;
+  if (opts.omegaTopology) result = `${OMEGA_TOPOLOGY_BLOCK}\n\n${result}`;
+  if (opts.ergodicSync)   result = `${ERGODIC_SYNC_BLOCK}\n\n${result}`;
+  return result;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -357,6 +406,8 @@ export interface GenerateOptions {
   mediaOracle: boolean;
   reverseEngineering: boolean;
   apexDefense: boolean;
+  omegaTopology: boolean;
+  ergodicSync: boolean;
   apiKey: string;
   model: string;
   temperature: number;
@@ -505,11 +556,11 @@ export interface LayerConfig {
   key: keyof Pick<GenerateOptions,
     "mathDominance" | "singularityIntelligence" | "monteCarlo" | "zkVerification" |
     "fractalEconomy" | "regenerativeSovereignty" | "omniNode" | "mediaOracle" |
-    "reverseEngineering" | "apexDefense">;
+    "reverseEngineering" | "apexDefense" | "omegaTopology" | "ergodicSync">;
   label: string;
   sublabel: string;
   color: string;
-  group: "math" | "strategy" | "intelligence" | "apex";
+  group: "math" | "strategy" | "intelligence" | "apex" | "singularity";
 }
 
 export const LAYER_CONFIGS: LayerConfig[] = [
@@ -533,4 +584,8 @@ export const LAYER_CONFIGS: LayerConfig[] = [
     sublabel: "STI Topology · Drift Replication · Fractal Media Matrix · ZKCI" },
   { key: "apexDefense",             label: "APEX-DEFENSE: Ontological Firewall & WASM Sandbox", color: "#30D158", group: "apex",
     sublabel: "WASM Sandbox · FHE State · Polymorphic Guardian · Zero-Trust Rendering · Audit Trail" },
+  { key: "omegaTopology",           label: "OMEGA-TOPOLOGY: Metamorphic Yield Synthesis",        color: "#8B5CF6", group: "singularity",
+    sublabel: "Hypergraph Tracking · Topological Yield · DOM Geometry Extraction · ZK Topology Proof" },
+  { key: "ergodicSync",             label: "ERGODIC-SYNC: Macro-Temporal Grounding",             color: "#E5E7EB", group: "singularity",
+    sublabel: "Earth-Physics Ingestion · Temporal Dilation · Privilege Separation · Ergodic Compliance" },
 ];
