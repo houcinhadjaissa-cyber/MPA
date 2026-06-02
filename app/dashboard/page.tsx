@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useReducer, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import PayloadViewer from "@/components/PayloadViewer";
 import PromptHistory, { HistoryEntry } from "@/components/PromptHistory";
 import {
   generatePayload,
   GenerateOptions,
+  LayerConfig,
   GROQ_MODELS,
   INDUSTRY_TEMPLATES,
   DOMINANCE_PROTOCOLS,
@@ -21,6 +22,7 @@ const LS_HISTORY    = "mpa_prompt_history";
 const LS_PROJECTS   = "mpa_projects";
 const MAX_HISTORY   = 20;
 
+// Guards: all localStorage reads ONLY happen inside useEffect (client-side only)
 function lsGet(key: string, fallback = ""): string {
   if (typeof window === "undefined") return fallback;
   try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
@@ -47,15 +49,39 @@ function maskKey(key: string): string {
   return key.slice(0, 7) + "·".repeat(10);
 }
 
+// ── Layer Reducer (real Reducer pattern — replaces individual useState booleans) ──
+type LayerKey = LayerConfig["key"];
+type LayerState = Record<LayerKey, boolean>;
+type LayerAction =
+  | { type: "TOGGLE"; key: LayerKey }
+  | { type: "SET";    key: LayerKey; value: boolean }
+  | { type: "RESET" };
+
+const INITIAL_LAYERS: LayerState = {
+  mathDominance: false, singularityIntelligence: false, monteCarlo: false,
+  zkVerification: false, fractalEconomy: false, regenerativeSovereignty: false,
+  omniNode: false, mediaOracle: false, reverseEngineering: false, apexDefense: false,
+};
+
+function layerReducer(state: LayerState, action: LayerAction): LayerState {
+  switch (action.type) {
+    case "TOGGLE": return { ...state, [action.key]: !state[action.key] };
+    case "SET":    return { ...state, [action.key]: action.value };
+    case "RESET":  return { ...INITIAL_LAYERS };
+    default: return state;
+  }
+}
+
 // ── Island mode ───────────────────────────────────────────────────────────────
 type IslandMode = "idle" | "generating" | "success" | "error" | "keyTesting" | "keyValid" | "keyInvalid";
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
-const BG_MAIN  = "bg-[#1C1C1E]";
 const BG_CARD  = "bg-[#2C2C2E]";
-const BG_INPUT = "bg-[#0A0A0A]";
 const BORDER   = "border border-white/5";
-const INPUT_CLASS = `w-full ${BG_INPUT} border border-white/10 text-white placeholder:text-gray-500 focus:border-[#2997FF] focus:ring-1 focus:ring-[#2997FF] outline-none transition-all rounded-xl px-4 py-3 text-sm`;
+const INPUT_CLASS =
+  "w-full bg-[#0A0A0A] border border-white/10 text-white placeholder:text-gray-500 " +
+  "focus:border-[#2997FF] focus:ring-1 focus:ring-[#2997FF] outline-none " +
+  "transition-all rounded-xl px-4 py-3 text-sm";
 
 // ── Dynamic Island ────────────────────────────────────────────────────────────
 function DynamicIsland({ mode, errorMsg }: { mode: IslandMode; errorMsg?: string }) {
@@ -65,11 +91,9 @@ function DynamicIsland({ mode, errorMsg }: { mode: IslandMode; errorMsg?: string
 
   return (
     <div className="flex justify-center mb-8">
-      <motion.div layout
-        transition={{ type: "spring", stiffness: 420, damping: 32 }}
+      <motion.div layout transition={{ type: "spring", stiffness: 420, damping: 32 }}
         className={[
-          "flex items-center justify-center gap-2 overflow-hidden",
-          "rounded-full shadow-2xl",
+          "flex items-center justify-center gap-2 overflow-hidden rounded-full shadow-2xl",
           isExpanded ? "px-5 py-2.5" : "px-6 py-1.5",
           isErr ? "bg-black border border-red-500/40"
             : isOk ? "bg-black border border-[#30D158]/40"
@@ -87,34 +111,30 @@ function DynamicIsland({ mode, errorMsg }: { mode: IslandMode; errorMsg?: string
             <motion.span key="gen" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
               className="flex items-center gap-2 text-xs font-mono text-[#2997FF]">
               <span className="w-2 h-2 rounded-full bg-[#2997FF] animate-pulse shrink-0" />
-              Generating…
+              Streaming…
             </motion.span>
           )}
           {mode === "success" && (
             <motion.span key="ok" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-              className="flex items-center gap-2 text-xs font-mono text-[#30D158]">
-              ✓ Prompt Ready
-            </motion.span>
+              className="text-xs font-mono text-[#30D158]">✓ Prompt Ready</motion.span>
           )}
           {mode === "error" && (
             <motion.span key="err" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="text-xs font-mono text-red-400 max-w-xs truncate">
-              ⚠ {errorMsg ?? "Generation failed"}
-            </motion.span>
+              className="text-xs font-mono text-red-400 max-w-xs truncate">⚠ {errorMsg ?? "Error"}</motion.span>
           )}
           {mode === "keyTesting" && (
-            <motion.span key="keyTest" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            <motion.span key="kt" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="flex items-center gap-2 text-xs font-mono text-gray-400">
               <span className="w-3 h-3 border-2 border-white/20 border-t-white/60 rounded-full animate-spin shrink-0" />
               Testing key…
             </motion.span>
           )}
           {mode === "keyValid" && (
-            <motion.span key="keyOk" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+            <motion.span key="kv" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
               className="text-xs font-mono text-[#30D158]">✓ API key valid</motion.span>
           )}
           {mode === "keyInvalid" && (
-            <motion.span key="keyBad" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+            <motion.span key="ki" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
               className="text-xs font-mono text-red-400">✕ API key invalid</motion.span>
           )}
         </AnimatePresence>
@@ -123,7 +143,7 @@ function DynamicIsland({ mode, errorMsg }: { mode: IslandMode; errorMsg?: string
   );
 }
 
-// ── IosToggle ─────────────────────────────────────────────────────────────────
+// ── IosToggle — CSS transition, bg-[#39393D] off state ───────────────────────
 function IosToggle({ active, onChange, color }: {
   active: boolean; onChange: (v: boolean) => void; color: string;
 }) {
@@ -132,21 +152,20 @@ function IosToggle({ active, onChange, color }: {
       onClick={() => onChange(!active)}
       style={{ backgroundColor: active ? color : "#39393D" }}
       className="relative w-11 h-6 rounded-full shrink-0 transition-colors duration-200 ease-in-out focus:outline-none">
-      <div className={`absolute top-[2px] left-[2px] w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-200 ease-in-out ${active ? "translate-x-5" : "translate-x-0"}`} />
+      <div className={[
+        "absolute top-[2px] left-[2px] w-5 h-5 rounded-full bg-white shadow-md",
+        "transition-transform duration-200 ease-in-out",
+        active ? "translate-x-5" : "translate-x-0",
+      ].join(" ")} />
     </button>
   );
 }
 
-// ── Section card ──────────────────────────────────────────────────────────────
+// ── Card + Layer Row ──────────────────────────────────────────────────────────
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={`${BG_CARD} rounded-2xl ${BORDER} ${className}`}>
-      {children}
-    </div>
-  );
+  return <div className={`${BG_CARD} rounded-2xl ${BORDER} ${className}`}>{children}</div>;
 }
 
-// ── Layer row ─────────────────────────────────────────────────────────────────
 function LayerRow({ active, onChange, label, sublabel, color }: {
   active: boolean; onChange: (v: boolean) => void;
   label: string; sublabel: string; color: string;
@@ -154,7 +173,7 @@ function LayerRow({ active, onChange, label, sublabel, color }: {
   return (
     <div className="flex items-center justify-between gap-4 py-4 border-b border-white/5 last:border-b-0">
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-white leading-snug tracking-wide"
+        <p className="text-sm font-medium tracking-wide transition-colors"
           style={active ? { color } : { color: "#9CA3AF" }}>
           {label}
         </p>
@@ -167,51 +186,26 @@ function LayerRow({ active, onChange, label, sublabel, color }: {
 
 // ════════════════════════════════════════════════════════════════════════════════
 export default function Dashboard() {
-  // ── Core inputs
+  // ── Non-layer inputs
   const [masterObjective,  setMasterObjective]  = useState("");
   const [targetEntity,     setTargetEntity]     = useState("");
   const [targetContext,    setTargetContext]     = useState("");
   const [protocol,         setProtocol]         = useState(DOMINANCE_PROTOCOLS[0].id);
   const [customDirectives, setCustomDirectives] = useState("");
-
-  // ── Layer toggles (10 total)
-  const [mathDominance,           setMathDominance]           = useState(false);
-  const [singularityIntelligence, setSingularityIntelligence] = useState(false);
-  const [monteCarlo,              setMonteCarlo]              = useState(false);
-  const [zkVerification,          setZkVerification]          = useState(false);
-  const [fractalEconomy,          setFractalEconomy]          = useState(false);
-  const [regenerativeSovereignty, setRegenerativeSovereignty] = useState(false);
-  const [omniNode,                setOmniNode]                = useState(false);
-  const [mediaOracle,             setMediaOracle]             = useState(false);
-  const [reverseEngineering,      setReverseEngineering]      = useState(false);
-  const [apexDefense,             setApexDefense]             = useState(false);
-
-  const layerSetters: Record<string, (v: boolean) => void> = {
-    mathDominance: setMathDominance, singularityIntelligence: setSingularityIntelligence,
-    monteCarlo: setMonteCarlo, zkVerification: setZkVerification,
-    fractalEconomy: setFractalEconomy, regenerativeSovereignty: setRegenerativeSovereignty,
-    omniNode: setOmniNode, mediaOracle: setMediaOracle,
-    reverseEngineering: setReverseEngineering, apexDefense: setApexDefense,
-  };
-  const layerValues: Record<string, boolean> = {
-    mathDominance, singularityIntelligence, monteCarlo, zkVerification,
-    fractalEconomy, regenerativeSovereignty, omniNode, mediaOracle,
-    reverseEngineering, apexDefense,
-  };
-
-  // ── API key
   const [apiKey,  setApiKey]  = useState("");
   const [showKey, setShowKey] = useState(false);
-
-  // ── Model / tuning
   const [model,       setModel]       = useState(GROQ_MODELS[0].id);
   const [temperature, setTemperature] = useState(0.7);
 
+  // ── Layer state via Reducer (TOGGLE action dispatched per interaction)
+  const [layers, dispatchLayer] = useReducer(layerReducer, INITIAL_LAYERS);
+
   // ── Output
-  const [payload,     setPayload]     = useState("");
-  const [tokensUsed,  setTokensUsed]  = useState(0);
-  const [durationMs,  setDurationMs]  = useState(0);
-  const [activeModel, setActiveModel] = useState("");
+  const [payload,      setPayload]      = useState("");
+  const [tokensUsed,   setTokensUsed]   = useState(0);
+  const [durationMs,   setDurationMs]   = useState(0);
+  const [activeModel,  setActiveModel]  = useState("");
+  const [adaptWarning, setAdaptWarning] = useState<string | null>(null);
 
   // ── UX
   const [loading,    setLoading]    = useState(false);
@@ -229,7 +223,9 @@ export default function Dashboard() {
     timerRef.current = setTimeout(() => setIslandMode("idle"), ms);
   }, []);
 
+  // ── Hydration: ALL localStorage reads happen ONLY inside useEffect ──────────
   useEffect(() => {
+    if (typeof window === "undefined") return;
     setApiKey(lsGet(LS_APIKEY));
     setMasterObjective(lsGet(LS_OBJECTIVE));
     setCustomDirectives(lsGet(LS_DIRECTIVES));
@@ -238,10 +234,11 @@ export default function Dashboard() {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, []);
 
-  useEffect(() => { lsSet(LS_APIKEY,    apiKey); },           [apiKey]);
-  useEffect(() => { lsSet(LS_OBJECTIVE, masterObjective); },  [masterObjective]);
-  useEffect(() => { lsSet(LS_DIRECTIVES,customDirectives); }, [customDirectives]);
+  useEffect(() => { lsSet(LS_APIKEY,     apiKey); },           [apiKey]);
+  useEffect(() => { lsSet(LS_OBJECTIVE,  masterObjective); },  [masterObjective]);
+  useEffect(() => { lsSet(LS_DIRECTIVES, customDirectives); }, [customDirectives]);
 
+  // ── Test API key ─────────────────────────────────────────────────────────────
   const testKey = useCallback(async () => {
     if (!apiKey.trim()) return;
     setIslandMode("keyTesting");
@@ -259,13 +256,13 @@ export default function Dashboard() {
     setTargetContext(INDUSTRY_TEMPLATES[i].context);
   };
 
+  // ── Project Vault ─────────────────────────────────────────────────────────────
   const saveProject = () => {
     if (!targetEntity.trim()) return;
     const entry: SavedProject = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      label: projectLabel.trim() || targetEntity,
-      entity: targetEntity, context: targetContext,
-      masterObjective, protocol, createdAt: Date.now(),
+      label: projectLabel.trim() || targetEntity, entity: targetEntity,
+      context: targetContext, masterObjective, protocol, createdAt: Date.now(),
     };
     const updated = [entry, ...projects].slice(0, 20);
     setProjects(updated); lsSet(LS_PROJECTS, JSON.stringify(updated));
@@ -281,19 +278,21 @@ export default function Dashboard() {
   };
   const resetApiKey = () => { setApiKey(""); lsRemove(LS_APIKEY); };
 
+  // ── Generate ──────────────────────────────────────────────────────────────────
   const handleGenerate = useCallback(async () => {
-    setError(null); setPayload(""); setLoading(true);
-    setIslandMode("generating");
+    setError(null); setPayload(""); setAdaptWarning(null);
+    setLoading(true); setIslandMode("generating");
     try {
       const opts: GenerateOptions = {
-        targetEntity, targetContext, masterObjective, customDirectives, protocol,
-        mathDominance, singularityIntelligence, monteCarlo, zkVerification,
-        fractalEconomy, regenerativeSovereignty, omniNode, mediaOracle,
-        reverseEngineering, apexDefense, apiKey, model, temperature,
+        targetEntity, targetContext, masterObjective, customDirectives,
+        protocol, ...layers, apiKey, model, temperature,
       };
       const result = await generatePayload(opts);
-      setPayload(result.prompt); setTokensUsed(result.tokensUsed);
-      setDurationMs(result.durationMs); setActiveModel(result.model);
+      setPayload(result.prompt);
+      setTokensUsed(result.tokensUsed);
+      setDurationMs(result.durationMs);
+      setActiveModel(result.model);
+      if (result.adapted && result.warning) setAdaptWarning(result.warning);
       setIslandMode("success"); scheduleReset(2500);
 
       const entry: HistoryEntry = {
@@ -309,11 +308,8 @@ export default function Dashboard() {
       setError(msg); setIslandMode("error"); scheduleReset(6000);
     } finally { setLoading(false); }
   }, [
-    targetEntity, targetContext, masterObjective, customDirectives, protocol,
-    mathDominance, singularityIntelligence, monteCarlo, zkVerification,
-    fractalEconomy, regenerativeSovereignty, omniNode, mediaOracle,
-    reverseEngineering, apexDefense, apiKey, model, temperature,
-    history, scheduleReset,
+    targetEntity, targetContext, masterObjective, customDirectives,
+    protocol, layers, apiKey, model, temperature, history, scheduleReset,
   ]);
 
   const handleLoadHistory = (e: HistoryEntry) => {
@@ -322,30 +318,28 @@ export default function Dashboard() {
   };
   const handleClearHistory = () => { setHistory([]); lsRemove(LS_HISTORY); };
 
-  const activeLayers  = Object.values(layerValues).filter(Boolean).length;
+  // ── Derived values ────────────────────────────────────────────────────────────
+  const activeLayers  = Object.values(layers).filter(Boolean).length;
   const canGenerate   = !loading && !!targetEntity.trim() && !!targetContext.trim() && !!apiKey.trim();
-  const buttonLabel   = monteCarlo ? "Generate Strategy Matrix" : "Generate MACH Enterprise Prompt";
+  const buttonLabel   = layers.monteCarlo ? "Generate Strategy Matrix" : "Generate MACH Enterprise Prompt";
   const estTokens     = Math.round((masterObjective.length + targetEntity.length + targetContext.length + customDirectives.length) / 4);
   const selectedProto = DOMINANCE_PROTOCOLS.find(p => p.id === protocol);
 
-  const mathLayers        = LAYER_CONFIGS.filter(l => l.group === "math");
-  const strategyLayers    = LAYER_CONFIGS.filter(l => l.group === "strategy");
-  const intelligenceLayers= LAYER_CONFIGS.filter(l => l.group === "intelligence");
-  const apexLayer         = LAYER_CONFIGS.find(l => l.group === "apex")!;
+  const mathLayers         = LAYER_CONFIGS.filter(l => l.group === "math");
+  const strategyLayers     = LAYER_CONFIGS.filter(l => l.group === "strategy");
+  const intelligenceLayers = LAYER_CONFIGS.filter(l => l.group === "intelligence");
+  const apexLayer          = LAYER_CONFIGS.find(l => l.group === "apex")!;
 
   // ════════════════════════════════════════════════════════════════════════════════
   return (
-    <div className={`min-h-screen ${BG_MAIN}`}>
+    <div className="min-h-screen bg-[#1C1C1E]">
       <div className="max-w-3xl mx-auto px-6 md:px-10 py-10 space-y-4">
 
-        {/* ── Dynamic Island ──────────────────────────────────────────────── */}
         <DynamicIsland mode={islandMode} errorMsg={error ?? undefined} />
 
-        {/* ── Header ──────────────────────────────────────────────────────── */}
+        {/* Header */}
         <div className="text-center mb-8">
-          <p className="text-[#30D158] text-[11px] font-mono uppercase tracking-[0.25em] mb-2">
-            Master Plan Architect
-          </p>
+          <p className="text-[#30D158] text-[11px] font-mono uppercase tracking-[0.25em] mb-2">Master Plan Architect</p>
           <h1 className="text-white text-4xl font-semibold tracking-tight"
             style={{ fontFamily: "SF Pro Display, system-ui, -apple-system, sans-serif" }}>
             MPA Terminal
@@ -355,7 +349,7 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* ── Model Selector ───────────────────────────────────────────────── */}
+        {/* Model Selector */}
         <Card className="p-1 flex gap-1">
           {GROQ_MODELS.map(m => (
             <button key={m.id} onClick={() => setModel(m.id)}
@@ -368,7 +362,7 @@ export default function Dashboard() {
           ))}
         </Card>
 
-        {/* ── Quick Templates ──────────────────────────────────────────────── */}
+        {/* Quick Templates */}
         <div>
           <p className="text-gray-400 text-[11px] font-mono uppercase tracking-widest mb-3">Quick Templates</p>
           <div className="flex gap-2 flex-wrap">
@@ -381,7 +375,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── API Key ──────────────────────────────────────────────────────── */}
+        {/* API Key */}
         <Card className="p-6">
           <div className="flex items-center justify-between mb-3">
             <p className="text-white text-sm font-medium tracking-wide">Groq API Key</p>
@@ -406,16 +400,15 @@ export default function Dashboard() {
               className={INPUT_CLASS + " pr-24 font-mono"} />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
               {apiKey && !showKey && <span className="text-gray-600 text-[11px] font-mono hidden sm:inline">{maskKey(apiKey)}</span>}
-              <button onClick={() => setShowKey(v => !v)}
-                className="text-xs text-gray-400 hover:text-white transition-colors font-mono">
+              <button onClick={() => setShowKey(v => !v)} className="text-xs text-gray-400 hover:text-white transition-colors font-mono">
                 {showKey ? "Hide" : "Show"}
               </button>
             </div>
           </div>
-          <p className="text-gray-600 text-xs mt-2 font-mono">Stored in localStorage only · never transmitted except to api.groq.com</p>
+          <p className="text-gray-600 text-xs mt-2 font-mono">Stored in localStorage only · transmitted exclusively to api.groq.com</p>
         </Card>
 
-        {/* ── Master Objective ─────────────────────────────────────────────── */}
+        {/* Master Objective */}
         <Card className="p-6">
           <p className="text-white text-sm font-medium tracking-wide mb-3">Master Objective</p>
           <textarea value={masterObjective} onChange={e => setMasterObjective(e.target.value)}
@@ -423,7 +416,7 @@ export default function Dashboard() {
             rows={3} className={INPUT_CLASS + " resize-y leading-relaxed"} />
         </Card>
 
-        {/* ── Target Entity + Context ──────────────────────────────────────── */}
+        {/* Target Entity + Context */}
         <Card className="p-6 space-y-4">
           <div>
             <p className="text-white text-sm font-medium tracking-wide mb-3">Target Entity</p>
@@ -441,7 +434,7 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        {/* ── Protocol + Directives + Temperature + Generate ───────────────── */}
+        {/* Protocol + Directives + Temperature + Generate */}
         <Card className="p-6 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -482,24 +475,35 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Adaptation warning */}
+          <AnimatePresence>
+            {adaptWarning && (
+              <motion.p key="adapt-warn"
+                initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+                className="text-xs font-mono text-amber-400/80 bg-amber-400/5 border border-amber-400/15 rounded-xl px-4 py-2">
+                ⚡ {adaptWarning}
+              </motion.p>
+            )}
+          </AnimatePresence>
+
           {/* Generate button */}
           <motion.button onClick={handleGenerate} disabled={!canGenerate}
             whileTap={{ scale: canGenerate ? 0.98 : 1 }}
             className={`w-full font-semibold text-sm py-3.5 rounded-xl transition-opacity text-white ${
-              apexDefense ? "bg-[#30D158] hover:opacity-90" :
-              monteCarlo  ? "bg-[#06B6D4] hover:opacity-90" :
+              layers.apexDefense ? "bg-[#30D158] hover:opacity-90" :
+              layers.monteCarlo  ? "bg-[#06B6D4] hover:opacity-90" :
               "bg-[#2997FF] hover:opacity-90"
             } disabled:opacity-40 disabled:cursor-not-allowed`}>
             {loading ? (
               <span className="flex items-center justify-center gap-2">
                 <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Generating…
+                Streaming…
               </span>
             ) : buttonLabel}
           </motion.button>
         </Card>
 
-        {/* ── Intelligence Layers ──────────────────────────────────────────── */}
+        {/* Intelligence Layers */}
         <div className="space-y-3">
           <div className="flex items-center justify-between mb-1">
             <p className="text-gray-400 text-[11px] font-mono uppercase tracking-widest">Intelligence Layers</p>
@@ -510,83 +514,76 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Math Foundation */}
           <Card className="px-6 pb-1">
             <p className="text-gray-600 text-[10px] font-mono uppercase tracking-widest pt-5 pb-1">Math Foundation</p>
             {mathLayers.map(cfg => (
-              <LayerRow key={cfg.key} active={layerValues[cfg.key]}
-                onChange={v => layerSetters[cfg.key](v)}
+              <LayerRow key={cfg.key} active={layers[cfg.key]}
+                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: cfg.key })}
                 label={cfg.label} sublabel={cfg.sublabel} color={cfg.color} />
             ))}
           </Card>
 
-          {/* Strategy Architecture */}
           <Card className="px-6 pb-1">
             <p className="text-gray-600 text-[10px] font-mono uppercase tracking-widest pt-5 pb-1">Strategy Architecture</p>
             {strategyLayers.map(cfg => (
-              <LayerRow key={cfg.key} active={layerValues[cfg.key]}
-                onChange={v => layerSetters[cfg.key](v)}
+              <LayerRow key={cfg.key} active={layers[cfg.key]}
+                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: cfg.key })}
                 label={cfg.label} sublabel={cfg.sublabel} color={cfg.color} />
             ))}
           </Card>
 
-          {/* Competitive Intelligence */}
           <Card className="px-6 pb-1">
             <p className="text-gray-600 text-[10px] font-mono uppercase tracking-widest pt-5 pb-1">Competitive Intelligence</p>
             {intelligenceLayers.map(cfg => (
-              <LayerRow key={cfg.key} active={layerValues[cfg.key]}
-                onChange={v => layerSetters[cfg.key](v)}
+              <LayerRow key={cfg.key} active={layers[cfg.key]}
+                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: cfg.key })}
                 label={cfg.label} sublabel={cfg.sublabel} color={cfg.color} />
             ))}
           </Card>
 
-          {/* APEX-DEFENSE — Special fortified card */}
+          {/* APEX-DEFENSE — pulsing green glow card */}
           <motion.div
             animate={{
-              boxShadow: apexDefense
+              boxShadow: layers.apexDefense
                 ? ["0 0 0 0 rgba(48,209,88,0.3)", "0 0 16px 3px rgba(48,209,88,0.15)", "0 0 0 0 rgba(48,209,88,0.3)"]
                 : "0 0 0 0 rgba(48,209,88,0)",
             }}
-            transition={apexDefense ? { duration: 2.5, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
-            className={`rounded-2xl border px-6 pb-1 ${BG_CARD} ${
-              apexDefense ? "border-[#30D158]/40" : "border-white/5"
-            }`}
+            transition={layers.apexDefense ? { duration: 2.5, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
+            className={`rounded-2xl border px-6 pb-1 ${BG_CARD} ${layers.apexDefense ? "border-[#30D158]/40" : "border-white/5"}`}
           >
             <div className="flex items-center gap-2 pt-5 pb-1">
               <p className="text-[10px] font-mono uppercase tracking-widest text-[#30D158]/60">Foundational Security Layer</p>
-              {apexDefense && (
-                <span className="text-[10px] font-mono text-[#30D158] border border-[#30D158]/30 rounded-full px-2 py-0.5">
-                  ACTIVE
-                </span>
+              {layers.apexDefense && (
+                <span className="text-[10px] font-mono text-[#30D158] border border-[#30D158]/30 rounded-full px-2 py-0.5">ACTIVE</span>
               )}
             </div>
             <div className="flex items-center justify-between gap-4 py-4">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold leading-snug tracking-wide"
-                  style={{ color: apexDefense ? "#30D158" : "#9CA3AF" }}>
+                <p className="text-sm font-semibold tracking-wide"
+                  style={{ color: layers.apexDefense ? "#30D158" : "#9CA3AF" }}>
                   {apexLayer.label}
                 </p>
                 <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{apexLayer.sublabel}</p>
               </div>
-              <IosToggle active={apexDefense} onChange={setApexDefense} color="#30D158" />
+              <IosToggle active={layers.apexDefense}
+                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "apexDefense" })}
+                color="#30D158" />
             </div>
           </motion.div>
         </div>
 
-        {/* ── Payload Output ───────────────────────────────────────────────── */}
+        {/* Payload Output */}
         <AnimatePresence>
           {payload && (
             <motion.div key="payload-viewer"
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}>
+              initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3, ease: "easeOut" }}>
               <PayloadViewer payload={payload} tokensUsed={tokensUsed} durationMs={durationMs} model={activeModel} />
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* ── Project Vault ────────────────────────────────────────────────── */}
+        {/* Project Vault */}
         <Card className="overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
             <p className="text-white text-sm font-medium tracking-wide">
@@ -599,7 +596,7 @@ export default function Dashboard() {
               <input type="text" value={projectLabel} onChange={e => setProjectLabel(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") saveProject(); }}
                 placeholder="Project name (optional)"
-                className={`flex-1 ${BG_INPUT} border border-white/10 text-white placeholder:text-gray-500 focus:border-[#2997FF] outline-none transition-all rounded-xl px-4 py-2.5 text-xs font-mono`} />
+                className="flex-1 bg-[#0A0A0A] border border-white/10 text-white placeholder:text-gray-500 focus:border-[#2997FF] outline-none transition-all rounded-xl px-4 py-2.5 text-xs font-mono" />
               <button onClick={saveProject} disabled={!targetEntity.trim()}
                 className="text-xs font-mono px-4 py-2.5 rounded-xl bg-[#3A3A3C] text-white hover:bg-[#48484A] transition-colors disabled:opacity-40 whitespace-nowrap">
                 Save Context
@@ -625,7 +622,7 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        {/* ── Prompt History ───────────────────────────────────────────────── */}
+        {/* Prompt History */}
         <PromptHistory entries={history} onLoad={handleLoadHistory} onClear={handleClearHistory} />
 
       </div>
