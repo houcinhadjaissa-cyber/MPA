@@ -128,6 +128,18 @@ export interface INextWaveCore {
 
   /** Signs the state transition delta using HMAC-SHA-256; proves physics without revealing data. */
   generateStateProof(previousState: string, newState: string): Promise<string>;
+
+  /** Calculates Value-Realized Savings + 2% Sovereign Fee from legacy cost + friction points. */
+  calculateValueRealization(legacyCost: number, userFrictionPoints: number): {
+    legacyCostPerHour: number; frictionPenalty: number;
+    valueRealizedSavings: number; sovereignFee: number; compoundYieldIndex: number;
+  };
+
+  /** Generates ECDSA P-256 Kinship Seed hex; browser-only, falls back to hex prefix in Node. */
+  generateKinshipSeed(): Promise<string>;
+
+  /** Hashes userState via SHA-256, returns 'ZK-PROOF:<hex>' for B2B proof markets. */
+  generateSubStratumProof(userState: string): Promise<string>;
 }
 
 // ─── Payload Generator Interface ─────────────────────────────────────────────
@@ -152,6 +164,7 @@ export interface IGenerateOptions {
   ergodicSync: boolean;
   omegaAbsolute: boolean;
   omegaSecurity: boolean;
+  singularityEngine: boolean;
   apiKey: string;
   model: string;
   temperature: number;

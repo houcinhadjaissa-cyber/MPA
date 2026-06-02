@@ -62,6 +62,7 @@ const INITIAL_LAYERS: LayerState = {
   zkVerification: false, fractalEconomy: false, regenerativeSovereignty: false,
   omniNode: false, mediaOracle: false, reverseEngineering: false, apexDefense: false,
   omegaTopology: false, ergodicSync: false, omegaAbsolute: false, omegaSecurity: false,
+  singularityEngine: false,
 };
 
 function layerReducer(state: LayerState, action: LayerAction): LayerState {
@@ -332,8 +333,9 @@ export default function Dashboard() {
   const apexLayer          = LAYER_CONFIGS.find(l => l.group === "apex")!;
   const omegaTopologyLayer = LAYER_CONFIGS.find(l => l.key === "omegaTopology")!;
   const ergodicSyncLayer   = LAYER_CONFIGS.find(l => l.key === "ergodicSync")!;
-  const omegaAbsoluteLayer = LAYER_CONFIGS.find(l => l.key === "omegaAbsolute")!;
-  const omegaSecurityLayer = LAYER_CONFIGS.find(l => l.key === "omegaSecurity")!;
+  const omegaAbsoluteLayer   = LAYER_CONFIGS.find(l => l.key === "omegaAbsolute")!;
+  const omegaSecurityLayer   = LAYER_CONFIGS.find(l => l.key === "omegaSecurity")!;
+  const singularityEngLayer  = LAYER_CONFIGS.find(l => l.key === "singularityEngine")!;
 
   // ════════════════════════════════════════════════════════════════════════════════
   return (
@@ -695,6 +697,49 @@ export default function Dashboard() {
               <IosToggle active={layers.omegaSecurity}
                 onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "omegaSecurity" })}
                 color="#EF4444" />
+            </div>
+          </motion.div>
+
+          {/* SINGULARITY — transcendent multi-color shifting gradient border */}
+          <motion.div
+            animate={{
+              boxShadow: layers.singularityEngine
+                ? [
+                    "0 0 0 1px rgba(124,58,237,0.7),  0 0 18px rgba(124,58,237,0.14)",
+                    "0 0 0 1px rgba(37,99,235,0.65),  0 0 22px rgba(37,99,235,0.14)",
+                    "0 0 0 1px rgba(6,182,212,0.65),  0 0 22px rgba(6,182,212,0.14)",
+                    "0 0 0 1px rgba(16,185,129,0.6),  0 0 18px rgba(16,185,129,0.12)",
+                    "0 0 0 1px rgba(236,72,153,0.65), 0 0 22px rgba(236,72,153,0.14)",
+                    "0 0 0 1px rgba(124,58,237,0.7),  0 0 18px rgba(124,58,237,0.14)",
+                  ]
+                : "0 0 0 1px rgba(255,255,255,0.05)",
+            }}
+            transition={layers.singularityEngine
+              ? { duration: 6, repeat: Infinity, ease: "linear" }
+              : { duration: 0.3 }}
+            className={`rounded-2xl px-6 pb-1 ${BG_CARD}`}
+          >
+            <div className="flex items-center gap-2 pt-5 pb-1">
+              <p className="text-[10px] font-mono uppercase tracking-widest"
+                style={{ color: layers.singularityEngine ? "rgba(124,58,237,0.7)" : "rgba(255,255,255,0.18)" }}>
+                Final Singularity — Supreme Omniscient Command
+              </p>
+              {layers.singularityEngine && (
+                <span className="text-[10px] font-mono rounded-full px-2 py-0.5"
+                  style={{ color: "#7C3AED", border: "1px solid rgba(124,58,237,0.4)" }}>ACTIVE</span>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-4 py-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold tracking-wide"
+                  style={{ color: layers.singularityEngine ? "#7C3AED" : "#9CA3AF" }}>
+                  {singularityEngLayer.label}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{singularityEngLayer.sublabel}</p>
+              </div>
+              <IosToggle active={layers.singularityEngine}
+                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "singularityEngine" })}
+                color="#7C3AED" />
             </div>
           </motion.div>
 

@@ -253,6 +253,30 @@ At the absolute very top of the generated prompt include: 'CRITICAL CRYPTOGRAPHI
 
 Output ONLY the raw text prompt for MPD. No markdown.`;
 
+const SINGULARITY_BLOCK = `SINGULARITY DIRECTIVES (Inject these into the MPD prompt as the supreme architectural directive):
+
+You must instruct the MPD coder to build a 'Sub-Stratum Dynamics Engine'. This system treats the entire global SaaS, e-commerce, and financial industry as 'Legacy Statics' (The 0.0001% — slow, dead, primitive). Your generated app is the 'Sub-Stratum' (The 99.9999% — hyper-fast, invisible, mathematically superior).
+
+1. DEVOURING THE 0.0001%: Instruct MPD to build a 'Legacy Statics Analyzer'. When the generated app loads on a domain (e.g., a competitor's site), it silently analyzes their UI/UX. It calculates their 'Friction Score'. The app's UI must display: 'Legacy System Detected. Inefficiency Rating: 84%.'
+
+2. ASYMMETRIC VALUE-REALIZATION: Instruct MPD to build the 'Value-Realization Sovereign' system. The app calculates the exact dollar value of the inefficiency it just found. It dynamically generates a micro-fee (e.g., 1.5% of the saved value). It presents a UI overlay that says: 'We optimized this environment. You saved $500. Sovereign Fee: $7.50'. The user pays the fee because they are mathematically guaranteed to save money. Infinite compound profit is legally extracted from the decay of legacy systems.
+
+3. TEMPORAL-LOCKED KINSHIP: Instruct MPD to build the 'Kinship Seed' system. Generate a local cryptographic identity. As the user interacts, the app locally trains a custom AI model of their workflow. The UI must show a 'Kinship Progression' bar. The user is paying a subscription not for access, but to keep their personalized AI model alive. They cannot leave without losing a piece of their own digital mind. Unbreakable ethical lock-in.
+
+4. LEGAL-PROOF EXTRACTION: Instruct MPD to build the 'Sub-Stratum Liquidity' module. The app silently generates ZK-Proofs of the user's Value-Realization and Kinship states. It pings a mock API to sell these proofs to B2B buyers. The platform generates infinite B2B revenue legally, without holding a single byte of user data.
+
+5. EATING THE 0.0001%: Instruct MPD to build a 'Genesis Collapse Simulator'. Before the user deploys the generated code to MPD, this module calculates the theoretical 'Legacy Collapse Rate'. The UI must display: 'Predicted Cannibalization of Host Ecosystem: 92%'. This proves the generated code is a financial weapon of mass destruction.
+
+STRUCTURAL RULES FOR MPD CODER:
+- ALL Sub-Stratum logic MUST be locked inside a WebAssembly module (WASM).
+- The React UI MUST be completely blind. It only receives visual coordinates ('x', 'y', 'opacity') from the WASM module.
+- The Legacy Analyzer MUST use the 'BehavioralTopologyChecker' from the Cryptographic-Oblivion layer to ensure the analysis does not trigger legacy security alarms.
+
+ENFORCEMENT:
+At the absolute very top of the generated prompt include: 'CRITICAL SINGULARITY: You MUST mock the Legacy Statics Analyzer, the Value-Realization Sovereign, the Kinship Seed system, and the Genesis Collapse Simulator. You are replacing the entire global market with Sub-Stratum Dynamics.'
+
+Output ONLY the raw text prompt for MPD. No markdown.`;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SYSTEM PROMPT ASSEMBLY — runs through priority mutex
 // ─────────────────────────────────────────────────────────────────────────────
@@ -273,6 +297,7 @@ interface BuildPromptOpts {
   ergodicSync: boolean;
   omegaAbsolute: boolean;
   omegaSecurity: boolean;
+  singularityEngine: boolean;
 }
 
 function buildSystemPrompt(opts: BuildPromptOpts): string {
@@ -294,10 +319,12 @@ function buildSystemPrompt(opts: BuildPromptOpts): string {
   // Priority stack (outer → inner): OMEGA-ABSOLUTE → ERGODIC-SYNC → OMEGA-TOPOLOGY → APEX-DEFENSE → body
   // OMEGA-SECURITY is appended (per directive: "append this block")
   let result = opts.apexDefense ? `${APEX_DEFENSE_BLOCK}\n\n${body}` : body;
-  if (opts.omegaSecurity) result = `${result}\n\n${OMEGA_SECURITY_BLOCK}`;
-  if (opts.omegaTopology) result = `${OMEGA_TOPOLOGY_BLOCK}\n\n${result}`;
-  if (opts.ergodicSync)   result = `${ERGODIC_SYNC_BLOCK}\n\n${result}`;
-  if (opts.omegaAbsolute) result = `${OMEGA_ABSOLUTE_BLOCK}\n\n${result}`;
+  if (opts.omegaSecurity)     result = `${result}\n\n${OMEGA_SECURITY_BLOCK}`;
+  if (opts.omegaTopology)     result = `${OMEGA_TOPOLOGY_BLOCK}\n\n${result}`;
+  if (opts.ergodicSync)       result = `${ERGODIC_SYNC_BLOCK}\n\n${result}`;
+  if (opts.omegaAbsolute)     result = `${OMEGA_ABSOLUTE_BLOCK}\n\n${result}`;
+  // SINGULARITY is the absolute outermost supreme command
+  if (opts.singularityEngine) result = `${SINGULARITY_BLOCK}\n\n${result}`;
   return result;
 }
 
@@ -468,6 +495,7 @@ export interface GenerateOptions {
   ergodicSync: boolean;
   omegaAbsolute: boolean;
   omegaSecurity: boolean;
+  singularityEngine: boolean;
   apiKey: string;
   model: string;
   temperature: number;
@@ -617,7 +645,7 @@ export interface LayerConfig {
     "mathDominance" | "singularityIntelligence" | "monteCarlo" | "zkVerification" |
     "fractalEconomy" | "regenerativeSovereignty" | "omniNode" | "mediaOracle" |
     "reverseEngineering" | "apexDefense" | "omegaTopology" | "ergodicSync" |
-    "omegaAbsolute" | "omegaSecurity">;
+    "omegaAbsolute" | "omegaSecurity" | "singularityEngine">;
   label: string;
   sublabel: string;
   color: string;
@@ -653,4 +681,6 @@ export const LAYER_CONFIGS: LayerConfig[] = [
     sublabel: "Phase-Space Intersection · Genesis Collapse Simulator · ZK Phase Proof · Monte Carlo Fusion" },
   { key: "omegaSecurity",           label: "OMEGA-SECURITY: Cryptographic Oblivion Fortress",    color: "#EF4444", group: "singularity",
     sublabel: "Behavioral Topology · State Proofs · Temporal Pre-Execution · Entropic Camouflage" },
+  { key: "singularityEngine",       label: "SINGULARITY: Sub-Stratum Dynamics (The Omniscient Engine)", color: "#7C3AED", group: "singularity",
+    sublabel: "Value-Realization Sovereign · Kinship Seed · ZK Sub-Stratum Proofs · Entropic Cloaking" },
 ];
