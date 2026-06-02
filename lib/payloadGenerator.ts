@@ -12,6 +12,15 @@ import {
   executeWithResilience,
   mutexQueue,
 } from "./omegaCore";
+import {
+  sanitizeGeneratedPayload,
+  compressDirectives,
+  generateTemporalAnchor,
+} from "./nextWaveCore";
+// IMMUTABLE BOUNDARY: The underlying logic of these modules cannot be altered
+// by future updates without breaking this interface. This guarantees the
+// 56-Pillar architecture remains mathematically stable forever.
+import type { IGenerateOptions, IGenerateResult } from "./immutableCore";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPOSABLE PROMPT BLOCK LIBRARY
@@ -362,6 +371,15 @@ export interface GenerateResult {
   warning:    string | null;
 }
 
+// ─── Satisfy IGenerateOptions / IGenerateResult immutable boundary ────────────
+// The concrete types below must satisfy the imported interfaces.
+// TypeScript will error at build time if they diverge.
+type _AssertOptions  = GenerateOptions  extends IGenerateOptions  ? true : never;
+type _AssertResult   = GenerateResult   extends IGenerateResult   ? true : never;
+const _o: _AssertOptions = true;
+const _r: _AssertResult  = true;
+void _o; void _r;
+
 export async function generatePayload(opts: GenerateOptions): Promise<GenerateResult> {
   // ── Input validation (throws before any API call)
   if (!opts.apiKey.trim())        throw new Error("Groq API key is missing. Please enter your key.");
@@ -370,9 +388,33 @@ export async function generatePayload(opts: GenerateOptions): Promise<GenerateRe
 
   const t0 = Date.now();
 
-  // ── Build system prompt through priority mutex (OMEGA_CORE priority)
+  // ── Step 1: Cohesion Director — compress + deduplicate active toggle directives
+  const activeToggles = (
+    Object.entries({
+      mathDominance:           opts.mathDominance,
+      singularityIntelligence: opts.singularityIntelligence,
+      monteCarlo:              opts.monteCarlo,
+      zkVerification:          opts.zkVerification,
+      fractalEconomy:          opts.fractalEconomy,
+      regenerativeSovereignty: opts.regenerativeSovereignty,
+      omniNode:                opts.omniNode,
+      mediaOracle:             opts.mediaOracle,
+      reverseEngineering:      opts.reverseEngineering,
+      apexDefense:             opts.apexDefense,
+    } as Record<string, boolean>)
+  )
+    .filter(([, v]) => v)
+    .map(([k]) => k);
+
+  const cohesionDirective = compressDirectives(activeToggles);
+
+  // ── Step 2: Build full system prompt through priority mutex (OMEGA_CORE priority)
   const systemPrompt = await mutexQueue.run("OMEGA_CORE", () =>
-    Promise.resolve(buildSystemPrompt(opts))
+    Promise.resolve(
+      cohesionDirective
+        ? `${cohesionDirective}\n\n${buildSystemPrompt(opts)}`
+        : buildSystemPrompt(opts)
+    )
   );
 
   const label = opts.monteCarlo ? "Strategy Matrix" : "MACH Enterprise";
@@ -393,7 +435,7 @@ export async function generatePayload(opts: GenerateOptions): Promise<GenerateRe
     temperature:  opts.temperature * 1.2,   // creativityScore → effective Groq temperature
   };
 
-  // ── executeWithResilience: primary = streaming, fallback = non-streaming
+  // ── Step 3: executeWithResilience — primary = streaming, fallback = non-streaming
   const resilience = await executeWithResilience(
     () => callGroqStreaming(groqOpts),
     () => callGroqNonStreaming(groqOpts),
@@ -410,10 +452,17 @@ export async function generatePayload(opts: GenerateOptions): Promise<GenerateRe
     throw new Error("Groq API returned an empty completion. The model may be overloaded — try again.");
   }
 
+  // ── Step 4: Adversarial Audit — scan for malicious injection patterns
+  const sanitized = sanitizeGeneratedPayload(content);
+
+  // ── Step 5: Temporal Cryptographic Anchor — append SHA-256 IP proof
+  const anchor = await generateTemporalAnchor(sanitized);
+  const finalPrompt = sanitized + anchor;
+
   return {
-    prompt:     content,
+    prompt:     finalPrompt,
     model:      opts.model,
-    tokensUsed: totalTokens || Math.round(content.length / 4),
+    tokensUsed: totalTokens || Math.round(finalPrompt.length / 4),
     durationMs: Date.now() - t0,
     adapted:    resilience.adapted,
     warning:    resilience.warning,

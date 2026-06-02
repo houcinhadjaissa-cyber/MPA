@@ -126,7 +126,7 @@ export async function safeEncrypt(password: string, salt: Uint8Array, plaintext:
   const combined = new Uint8Array(iv.byteLength + ciphertext.byteLength);
   combined.set(iv, 0);
   combined.set(new Uint8Array(ciphertext), iv.byteLength);
-  return btoa(String.fromCharCode(...combined));
+  return btoa(String.fromCharCode(...Array.from(combined)));
 }
 
 export async function safeDecrypt(password: string, salt: Uint8Array, encoded: string): Promise<string> {

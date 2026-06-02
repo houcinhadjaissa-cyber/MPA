@@ -625,6 +625,11 @@ export default function Dashboard() {
         {/* Prompt History */}
         <PromptHistory entries={history} onLoad={handleLoadHistory} onClear={handleClearHistory} />
 
+        {/* Immutable footer — no re-render; static string, no state dependency */}
+        <p className="text-center text-gray-600 text-[11px] font-mono pb-2 select-none">
+          Protected by Adversarial Audit &amp; Temporal Anchoring.
+        </p>
+
       </div>
     </div>
   );
