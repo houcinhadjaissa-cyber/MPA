@@ -140,6 +140,18 @@ export interface INextWaveCore {
 
   /** Hashes userState via SHA-256, returns 'ZK-PROOF:<hex>' for B2B proof markets. */
   generateSubStratumProof(userState: string): Promise<string>;
+
+  /** Read-only analysis of public DOM signals → FrictionVector (never mutates host site). */
+  analyzeFriction(publicDOMSignals: string): {
+    artificialScarcityScore: number; countdownManipulation: number;
+    hiddenFeeIndex: number; fearInjectionLevel: number; totalFrictionPoints: number;
+  };
+
+  /** Maps FrictionVector → Safe Zone RetractionCoordinates (x, y, z, yieldCapture). */
+  generateRetractionVector(friction: object): { x: number; y: number; z: number; yieldCapture: number };
+
+  /** Mints ECDSA-signed Friction Yield Bond; returns 'FYB-PROOF:<value>:<hex>'. */
+  mintFrictionYieldBond(retractionCoords: { x: number; y: number; z: number; yieldCapture: number }): Promise<string>;
 }
 
 // ─── Payload Generator Interface ─────────────────────────────────────────────
@@ -165,6 +177,7 @@ export interface IGenerateOptions {
   omegaAbsolute: boolean;
   omegaSecurity: boolean;
   singularityEngine: boolean;
+  retractor: boolean;
   apiKey: string;
   model: string;
   temperature: number;

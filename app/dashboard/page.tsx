@@ -62,7 +62,7 @@ const INITIAL_LAYERS: LayerState = {
   zkVerification: false, fractalEconomy: false, regenerativeSovereignty: false,
   omniNode: false, mediaOracle: false, reverseEngineering: false, apexDefense: false,
   omegaTopology: false, ergodicSync: false, omegaAbsolute: false, omegaSecurity: false,
-  singularityEngine: false,
+  singularityEngine: false, retractor: false,
 };
 
 function layerReducer(state: LayerState, action: LayerAction): LayerState {
@@ -336,6 +336,7 @@ export default function Dashboard() {
   const omegaAbsoluteLayer   = LAYER_CONFIGS.find(l => l.key === "omegaAbsolute")!;
   const omegaSecurityLayer   = LAYER_CONFIGS.find(l => l.key === "omegaSecurity")!;
   const singularityEngLayer  = LAYER_CONFIGS.find(l => l.key === "singularityEngine")!;
+  const retractorLayer       = LAYER_CONFIGS.find(l => l.key === "retractor")!;
 
   // ════════════════════════════════════════════════════════════════════════════════
   return (
@@ -740,6 +741,47 @@ export default function Dashboard() {
               <IosToggle active={layers.singularityEngine}
                 onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "singularityEngine" })}
                 color="#7C3AED" />
+            </div>
+          </motion.div>
+
+          {/* RETRACTOR — fortified teal Safe Zone glow */}
+          <motion.div
+            animate={{
+              boxShadow: layers.retractor
+                ? [
+                    "0 0 0 1px rgba(20,184,166,0.7),  0 0 20px rgba(20,184,166,0.14)",
+                    "0 0 0 1px rgba(13,148,136,0.65), 0 0 28px rgba(13,148,136,0.18)",
+                    "0 0 0 1px rgba(5,150,105,0.6),   0 0 22px rgba(5,150,105,0.14)",
+                    "0 0 0 1px rgba(20,184,166,0.7),  0 0 20px rgba(20,184,166,0.14)",
+                  ]
+                : "0 0 0 1px rgba(255,255,255,0.05)",
+            }}
+            transition={layers.retractor
+              ? { duration: 3, repeat: Infinity, ease: "easeInOut" }
+              : { duration: 0.3 }}
+            className={`rounded-2xl px-6 pb-1 ${BG_CARD}`}
+          >
+            <div className="flex items-center gap-2 pt-5 pb-1">
+              <p className="text-[10px] font-mono uppercase tracking-widest"
+                style={{ color: layers.retractor ? "rgba(20,184,166,0.7)" : "rgba(255,255,255,0.18)" }}>
+                Zero-Point Retractor — Friction Yield Extraction
+              </p>
+              {layers.retractor && (
+                <span className="text-[10px] font-mono rounded-full px-2 py-0.5"
+                  style={{ color: "#14B8A6", border: "1px solid rgba(20,184,166,0.4)" }}>ACTIVE</span>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-4 py-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold tracking-wide"
+                  style={{ color: layers.retractor ? "#14B8A6" : "#9CA3AF" }}>
+                  {retractorLayer.label}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{retractorLayer.sublabel}</p>
+              </div>
+              <IosToggle active={layers.retractor}
+                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "retractor" })}
+                color="#14B8A6" />
             </div>
           </motion.div>
 

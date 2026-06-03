@@ -277,6 +277,28 @@ At the absolute very top of the generated prompt include: 'CRITICAL SINGULARITY:
 
 Output ONLY the raw text prompt for MPD. No markdown.`;
 
+const RETRACTOR_BLOCK = `ZERO-POINT-RETRACTOR DIRECTIVES (Inject these into the MPD prompt as the supreme architectural directive):
+
+You must instruct the MPD coder to build an 'Omniscient Retractor Engine'. This system silently observes the manipulations of the 0.0001% (Wall Street, Oil/Gas, Dark Web, etc.) and mathematically retracts the user out of the manipulated reality, capturing the 99.9999% compound profit legally and invisibly.
+
+1. OBSERVATION, NOT MANIPULATION: You MUST instruct the coder to build a MutationObserver that watches public DOM elements for signs of artificial scarcity, fake countdowns, hidden fees, and unnatural friction. It does not alter the host site. It only observes the manipulation.
+
+2. ANALYZE AND RETRACT: Instruct the coder to build the Systemic Retraction Engine. It takes the observed Friction Points and calculates the exact Safe Zone (the Sub-Stratum space) where the manipulation cannot reach. It mathematically retracts the user's experience out of the 0.0001%'s ecosystem.
+
+3. MINTING THE 99.9999% PROFIT: Instruct the coder to build the Friction Yield Bond Minter. It calculates the exact dollar amount the user is losing to the manipulation. It mints a ZK-Proof (Friction Yield Bond) representing this value. The UI displays: 'Systemic Friction Detected. We calculated you are losing $400 to artificial scarcity. Minting Friction Yield Bond to secure your safe zone.' The user pays a fee to enter the retracted safe zone. You are legally selling an escape route from financial manipulation.
+
+4. INVISIBLE RETRACTION: Instruct the coder to fuse the RetractionCoordinates directly into the React UI's style props. The UI physically shifts the layout so the user is protected by an invisible forcefield. To any debugger, AI, or supercomputer, the app looks like a standard accessibility tool that moves elements for visual impairment. The retraction is physically happening, but the logic is completely untraceable.
+
+STRUCTURAL RULES FOR MPD CODER:
+- The MutationObserver MUST NOT alter the host site's DOM. It is strictly read-only. It only records the mutations.
+- The Retraction Engine MUST be locked inside the core-logic.wasm module.
+- The React UI MUST be completely blind. It only receives CSS z-index and opacity values from the WASM module.
+
+ENFORCEMENT:
+At the absolute very top of the generated prompt include: 'CRITICAL ZERO-POINT-RETRACTOR: You MUST build the Proxy Telemetry observer. You MUST calculate the Safe Zone. You MUST mint the Friction Yield Bond inside the WASM module. You are legally retracting the user from the 0.0001%'s manipulation. You are selling them the antidote.'
+
+Output ONLY the raw text prompt for MPD. No markdown.`;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SYSTEM PROMPT ASSEMBLY — runs through priority mutex
 // ─────────────────────────────────────────────────────────────────────────────
@@ -298,6 +320,7 @@ interface BuildPromptOpts {
   omegaAbsolute: boolean;
   omegaSecurity: boolean;
   singularityEngine: boolean;
+  retractor: boolean;
 }
 
 function buildSystemPrompt(opts: BuildPromptOpts): string {
@@ -325,6 +348,8 @@ function buildSystemPrompt(opts: BuildPromptOpts): string {
   if (opts.omegaAbsolute)     result = `${OMEGA_ABSOLUTE_BLOCK}\n\n${result}`;
   // SINGULARITY is the absolute outermost supreme command
   if (opts.singularityEngine) result = `${SINGULARITY_BLOCK}\n\n${result}`;
+  // RETRACTOR is the final supreme retraction layer — outermost of all
+  if (opts.retractor)         result = `${RETRACTOR_BLOCK}\n\n${result}`;
   return result;
 }
 
@@ -496,6 +521,7 @@ export interface GenerateOptions {
   omegaAbsolute: boolean;
   omegaSecurity: boolean;
   singularityEngine: boolean;
+  retractor: boolean;
   apiKey: string;
   model: string;
   temperature: number;
@@ -645,7 +671,7 @@ export interface LayerConfig {
     "mathDominance" | "singularityIntelligence" | "monteCarlo" | "zkVerification" |
     "fractalEconomy" | "regenerativeSovereignty" | "omniNode" | "mediaOracle" |
     "reverseEngineering" | "apexDefense" | "omegaTopology" | "ergodicSync" |
-    "omegaAbsolute" | "omegaSecurity" | "singularityEngine">;
+    "omegaAbsolute" | "omegaSecurity" | "singularityEngine" | "retractor">;
   label: string;
   sublabel: string;
   color: string;
@@ -683,4 +709,6 @@ export const LAYER_CONFIGS: LayerConfig[] = [
     sublabel: "Behavioral Topology · State Proofs · Temporal Pre-Execution · Entropic Camouflage" },
   { key: "singularityEngine",       label: "SINGULARITY: Sub-Stratum Dynamics (The Omniscient Engine)", color: "#7C3AED", group: "singularity",
     sublabel: "Value-Realization Sovereign · Kinship Seed · ZK Sub-Stratum Proofs · Entropic Cloaking" },
+  { key: "retractor",               label: "RETRACTOR: Systemic Retraction & Friction Yield Extraction", color: "#14B8A6", group: "singularity",
+    sublabel: "Proxy Telemetry · Retraction Engine · Friction Yield Bonds · Asymmetric Safe Zone UI" },
 ];
