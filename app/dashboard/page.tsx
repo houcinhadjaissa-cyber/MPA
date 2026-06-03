@@ -62,7 +62,7 @@ const INITIAL_LAYERS: LayerState = {
   zkVerification: false, fractalEconomy: false, regenerativeSovereignty: false,
   omniNode: false, mediaOracle: false, reverseEngineering: false, apexDefense: false,
   omegaTopology: false, ergodicSync: false, omegaAbsolute: false, omegaSecurity: false,
-  singularityEngine: false, retractor: false,
+  singularityEngine: false, retractor: false, sinEater: false,
 };
 
 function layerReducer(state: LayerState, action: LayerAction): LayerState {
@@ -337,6 +337,7 @@ export default function Dashboard() {
   const omegaSecurityLayer   = LAYER_CONFIGS.find(l => l.key === "omegaSecurity")!;
   const singularityEngLayer  = LAYER_CONFIGS.find(l => l.key === "singularityEngine")!;
   const retractorLayer       = LAYER_CONFIGS.find(l => l.key === "retractor")!;
+  const sinEaterLayer        = LAYER_CONFIGS.find(l => l.key === "sinEater")!;
 
   // ════════════════════════════════════════════════════════════════════════════════
   return (
@@ -782,6 +783,47 @@ export default function Dashboard() {
               <IosToggle active={layers.retractor}
                 onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "retractor" })}
                 color="#14B8A6" />
+            </div>
+          </motion.div>
+
+          {/* SIN-EATER — fuchsia malevolence absorption glow */}
+          <motion.div
+            animate={{
+              boxShadow: layers.sinEater
+                ? [
+                    "0 0 0 1px rgba(192,38,211,0.8),  0 0 22px rgba(192,38,211,0.18)",
+                    "0 0 0 1px rgba(147,51,234,0.7),  0 0 30px rgba(147,51,234,0.22)",
+                    "0 0 0 1px rgba(219,39,119,0.75), 0 0 18px rgba(219,39,119,0.16)",
+                    "0 0 0 1px rgba(192,38,211,0.8),  0 0 22px rgba(192,38,211,0.18)",
+                  ]
+                : "0 0 0 1px rgba(255,255,255,0.05)",
+            }}
+            transition={layers.sinEater
+              ? { duration: 2.5, repeat: Infinity, ease: "easeInOut" }
+              : { duration: 0.3 }}
+            className={`rounded-2xl px-6 pb-1 ${BG_CARD}`}
+          >
+            <div className="flex items-center gap-2 pt-5 pb-1">
+              <p className="text-[10px] font-mono uppercase tracking-widest"
+                style={{ color: layers.sinEater ? "rgba(192,38,211,0.75)" : "rgba(255,255,255,0.18)" }}>
+                Omniscient Sin-Eater — Vice Yield Extraction Engine
+              </p>
+              {layers.sinEater && (
+                <span className="text-[10px] font-mono rounded-full px-2 py-0.5"
+                  style={{ color: "#C026D3", border: "1px solid rgba(192,38,211,0.4)" }}>ACTIVE</span>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-4 py-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold tracking-wide"
+                  style={{ color: layers.sinEater ? "#C026D3" : "#9CA3AF" }}>
+                  {sinEaterLayer.label}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{sinEaterLayer.sublabel}</p>
+              </div>
+              <IosToggle active={layers.sinEater}
+                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "sinEater" })}
+                color="#C026D3" />
             </div>
           </motion.div>
 

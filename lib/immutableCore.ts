@@ -152,6 +152,20 @@ export interface INextWaveCore {
 
   /** Mints ECDSA-signed Friction Yield Bond; returns 'FYB-PROOF:<value>:<hex>'. */
   mintFrictionYieldBond(retractionCoords: { x: number; y: number; z: number; yieldCapture: number }): Promise<string>;
+
+  /** Read-only societal signal analysis → MalevolenceVector; never mutates host DOM. */
+  analyzeSocietalFriction(publicSignals: string): {
+    artificialScarcityScore: number; energyPriceInflation: number; wageSuppression: number;
+    fearMongering: number; systemicBias: number; totalMalevolence: number;
+  };
+
+  /** Compresses MalevolenceVector → FrictionYieldData (tax, bond, multiplier, kinship boost). */
+  calculateMalevolenceTax(malevolenceVector: object): {
+    malevolenceTax: number; bondValue: number; yieldMultiplier: number; kinshipEnhancement: number;
+  };
+
+  /** Mints ECDSA-signed Vice Yield Bond; returns 'VYB-PROOF:<value>:<hex>'. */
+  mintViceYieldBond(yieldData: { malevolenceTax: number; bondValue: number; yieldMultiplier: number; kinshipEnhancement: number }): Promise<string>;
 }
 
 // ─── Payload Generator Interface ─────────────────────────────────────────────
@@ -178,6 +192,7 @@ export interface IGenerateOptions {
   omegaSecurity: boolean;
   singularityEngine: boolean;
   retractor: boolean;
+  sinEater: boolean;
   apiKey: string;
   model: string;
   temperature: number;

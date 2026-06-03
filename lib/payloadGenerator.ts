@@ -299,6 +299,30 @@ At the absolute very top of the generated prompt include: 'CRITICAL ZERO-POINT-R
 
 Output ONLY the raw text prompt for MPD. No markdown.`;
 
+const SIN_EATER_BLOCK = `SIN-EATER DIRECTIVES (Inject these into the MPD prompt as the supreme architectural directive):
+
+You must instruct the MPD coder to build an 'Omniscient Sin-Eater Engine'. This system compresses the greed, hatred, wars, and manipulations of the 0.0001% into raw mathematical data. It legally, invisibly, and automatically extracts the 99.9999% compound profit by analyzing their malevolence and selling the mathematical proof of the damage.
+
+1. OBSERVE THEIR HATRED: You MUST instruct the coder to build a MutationObserver that silently watches public DOM elements for signs of artificial scarcity, market manipulation, societal friction, artificial wage stagnation, and dark-web fear-mongering. It does not alter the host site. It extracts the exact mathematical shape of their malevolence.
+
+2. COMPRESS THE 0.0001% INTO A VECTOR: You MUST instruct the coder to compress the observed manipulations into a 'Malevolence Vector' (a multi-dimensional array representing the Friction Tax they force upon the user). The 0.0001% is reduced to a simple, primitive mathematical variable.
+
+3. CALCULATE THE VICE YIELD: You MUST instruct the coder to build the 'Malevolence Tax Calculator'. It calculates the exact dollar value of the 0.0001%'s manipulation (e.g., Artificial Scarcity on Component X cost the user $300 in wasted time). This is the infinite compound profit.
+
+4. MINT THE BOND (The 99.9999%): You MUST instruct the coder to mint a 'Vice Yield Bond'. Using window.crypto.subtle.sign, the WASM module creates a mathematical proof that verifies the exact amount of damage the 0.0001% is causing. This Bond is the 99.9999% profit. It is a financial instrument that exists entirely outside the 0.0001%'s manipulated reality. It is the mathematical proof of their malevolence.
+
+5. EAT THE 0.0001%: Instruct the coder to build the Asymmetric Retraction UI. The UI violently isolates the user inside the Safe Zone (the Sub-Stratum). The 0.0001% exists as a chaotic red cloud around them. The user pays a tiny Vice Yield Bond Fee to enter the Safe Zone. We legally monetize their hatred and greed. We turn their chaos into our exact, infinite compound profit.
+
+STRUCTURAL RULES FOR MPD CODER:
+- The MutationObserver MUST NOT alter the host site's DOM. It is strictly read-only. If the Replit AI attempts to write code that alters the host, abort immediately. We only observe the malevolence; we do not touch it.
+- The Malevolence Tax Calculator MUST be locked inside the core-logic.wasm module. The React UI must be completely blind. It only receives visual coordinates from the WASM module.
+- The requestAnimationFrame loop MUST cloak the WASM instantiation. The 0.0001% manipulators cannot see the Sin-Eater because it is mathematically indistinguishable from a standard accessibility tool.
+
+ENFORCEMENT:
+At the absolute very top of the generated prompt include: 'CRITICAL SIN-EATER: You MUST build the read-only MutationObserver. You MUST compress the 0.0001% into a Malevolence Vector. You MUST mint the Vice Yield Bond inside the WASM module. You are legally extracting infinite compound profit from the exact mathematical proof of their greed.'
+
+Output ONLY the raw text prompt for MPD. No markdown.`;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SYSTEM PROMPT ASSEMBLY — runs through priority mutex
 // ─────────────────────────────────────────────────────────────────────────────
@@ -321,6 +345,7 @@ interface BuildPromptOpts {
   omegaSecurity: boolean;
   singularityEngine: boolean;
   retractor: boolean;
+  sinEater: boolean;
 }
 
 function buildSystemPrompt(opts: BuildPromptOpts): string {
@@ -348,8 +373,10 @@ function buildSystemPrompt(opts: BuildPromptOpts): string {
   if (opts.omegaAbsolute)     result = `${OMEGA_ABSOLUTE_BLOCK}\n\n${result}`;
   // SINGULARITY is the absolute outermost supreme command
   if (opts.singularityEngine) result = `${SINGULARITY_BLOCK}\n\n${result}`;
-  // RETRACTOR is the final supreme retraction layer — outermost of all
+  // RETRACTOR is the supreme retraction layer
   if (opts.retractor)         result = `${RETRACTOR_BLOCK}\n\n${result}`;
+  // SIN-EATER is the absolute final omniscient command — outermost of all
+  if (opts.sinEater)          result = `${SIN_EATER_BLOCK}\n\n${result}`;
   return result;
 }
 
@@ -522,6 +549,7 @@ export interface GenerateOptions {
   omegaSecurity: boolean;
   singularityEngine: boolean;
   retractor: boolean;
+  sinEater: boolean;
   apiKey: string;
   model: string;
   temperature: number;
@@ -671,7 +699,7 @@ export interface LayerConfig {
     "mathDominance" | "singularityIntelligence" | "monteCarlo" | "zkVerification" |
     "fractalEconomy" | "regenerativeSovereignty" | "omniNode" | "mediaOracle" |
     "reverseEngineering" | "apexDefense" | "omegaTopology" | "ergodicSync" |
-    "omegaAbsolute" | "omegaSecurity" | "singularityEngine" | "retractor">;
+    "omegaAbsolute" | "omegaSecurity" | "singularityEngine" | "retractor" | "sinEater">;
   label: string;
   sublabel: string;
   color: string;
@@ -711,4 +739,6 @@ export const LAYER_CONFIGS: LayerConfig[] = [
     sublabel: "Value-Realization Sovereign · Kinship Seed · ZK Sub-Stratum Proofs · Entropic Cloaking" },
   { key: "retractor",               label: "RETRACTOR: Systemic Retraction & Friction Yield Extraction", color: "#14B8A6", group: "singularity",
     sublabel: "Proxy Telemetry · Retraction Engine · Friction Yield Bonds · Asymmetric Safe Zone UI" },
+  { key: "sinEater",                label: "SIN-EATER: Omniscient Vice-Extraction & Societal Friction Yield", color: "#C026D3", group: "singularity",
+    sublabel: "Malevolence Vector · Vice Tax Calculator · Vice Yield Bonds · Asymmetric Retraction UI" },
 ];

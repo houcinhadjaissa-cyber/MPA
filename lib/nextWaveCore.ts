@@ -603,6 +603,99 @@ export async function mintFrictionYieldBond(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// J. SIN-EATER — Omniscient Vice-Extraction & Societal Friction Yield
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface MalevolenceVector {
+  artificialScarcityScore: number; // Market panic / scarcity manipulation ∈ [0,1]
+  energyPriceInflation:    number; // Artificial energy price inflation ∈ [0,1]
+  wageSuppression:         number; // Artificial wage stagnation coefficient ∈ [0,1]
+  fearMongering:           number; // Dark-web / media fear injection ∈ [0,1]
+  systemicBias:            number; // Embedded systemic friction ∈ [0,1]
+  totalMalevolence:        number; // Composite malevolence score ∈ [0.0, 1.0]
+}
+
+export interface FrictionYieldData {
+  malevolenceTax:     number; // Exact dollar value of manipulation damage
+  bondValue:          number; // Vice Yield Bond denomination (99.9999% of tax)
+  yieldMultiplier:    number; // Compound yield amplification factor
+  kinshipEnhancement: number; // Kinship Seed power boost from this extraction cycle
+}
+
+/**
+ * SOCIETAL FRICTION TELEMETRY — passive read-only observer of public DOM signals.
+ * Detects: market panic, energy price manipulation, wage suppression, fear-mongering, systemic bias.
+ * Extracts the exact mathematical shape of the 0.0001%'s malevolence.
+ * NEVER mutates the host site. Observation only.
+ */
+export function analyzeSocietalFriction(publicSignals: string): MalevolenceVector {
+  const sig = publicSignals.toLowerCase();
+  const artificialScarcityScore = (sig.includes("scarcity") || sig.includes("shortage") || sig.includes("crisis"))    ? 0.92 : 0.11;
+  const energyPriceInflation    = (sig.includes("energy")   || sig.includes("oil")     || sig.includes("gas"))        ? 0.88 : 0.09;
+  const wageSuppression         = (sig.includes("wage")     || sig.includes("inflation") || sig.includes("stagnat"))  ? 0.84 : 0.07;
+  const fearMongering           = (sig.includes("fear")     || sig.includes("panic")   || sig.includes("war"))        ? 0.95 : 0.13;
+  const systemicBias            = (sig.includes("bias")     || sig.includes("systemic") || sig.includes("manipul"))   ? 0.89 : 0.10;
+  const totalMalevolence = (
+    artificialScarcityScore + energyPriceInflation + wageSuppression + fearMongering + systemicBias
+  ) / 5;
+  return { artificialScarcityScore, energyPriceInflation, wageSuppression, fearMongering, systemicBias, totalMalevolence };
+}
+
+/**
+ * MALEVOLENCE TAX CALCULATOR — compresses the 0.0001% into a dollar value.
+ * Calculates the exact monetary cost of their societal friction.
+ * Kinship Seed is enhanced by the magnitude of the malevolence extracted.
+ * The more they manipulate, the more powerful the user becomes.
+ */
+export function calculateMalevolenceTax(malevolenceVector: MalevolenceVector): FrictionYieldData {
+  const malevolenceTax    = +(malevolenceVector.totalMalevolence * 10_000).toFixed(2);
+  const bondValue         = +(malevolenceTax * 0.999999).toFixed(2);          // 99.9999% of tax
+  const yieldMultiplier   = malevolenceVector.totalMalevolence > 0
+    ? +(bondValue / Math.max(0.01, 1 - malevolenceVector.totalMalevolence)).toFixed(4)
+    : 0;
+  const kinshipEnhancement = +(malevolenceVector.totalMalevolence * 100).toFixed(6);
+  return { malevolenceTax, bondValue, yieldMultiplier, kinshipEnhancement };
+}
+
+/**
+ * VICE YIELD BOND MINTER — mints a ZK-Proof financial instrument from malevolence data.
+ * Signs (malevolenceTax:bondValue:yieldMultiplier:kinshipEnhancement) via ECDSA P-256.
+ * Bond exists entirely outside the 0.0001%'s manipulated reality.
+ * Browser-only — deterministic fallback in Node.
+ */
+export async function mintViceYieldBond(yieldData: FrictionYieldData): Promise<string> {
+  const isBrowser =
+    typeof window !== "undefined" &&
+    typeof window.crypto?.subtle !== "undefined";
+
+  const value = yieldData.bondValue.toFixed(2);
+  if (!isBrowser) return `VYB-PROOF:${value}:${"0".repeat(32)}`;
+
+  try {
+    const enc     = new TextEncoder();
+    const keyPair = await window.crypto.subtle.generateKey(
+      { name: "ECDSA", namedCurve: "P-256" },
+      false,
+      ["sign", "verify"],
+    );
+    const payload = enc.encode(
+      `${yieldData.malevolenceTax}:${value}:${yieldData.yieldMultiplier}:${yieldData.kinshipEnhancement}`,
+    );
+    const sig = await window.crypto.subtle.sign(
+      { name: "ECDSA", hash: "SHA-256" },
+      keyPair.privateKey,
+      payload,
+    );
+    const hex = Array.from(new Uint8Array(sig))
+      .map(b => b.toString(16).padStart(2, "0"))
+      .join("").slice(0, 64);
+    return `VYB-PROOF:${value}:${hex}`;
+  } catch {
+    return `VYB-PROOF:${value}:${"0".repeat(32)}`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // C. TEMPORAL CRYPTOGRAPHIC ANCHOR
 // ═══════════════════════════════════════════════════════════════════════════════
 
