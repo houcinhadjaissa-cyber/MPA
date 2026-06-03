@@ -166,6 +166,18 @@ export interface INextWaveCore {
 
   /** Mints ECDSA-signed Vice Yield Bond; returns 'VYB-PROOF:<value>:<hex>'. */
   mintViceYieldBond(yieldData: { malevolenceTax: number; bondValue: number; yieldMultiplier: number; kinshipEnhancement: number }): Promise<string>;
+
+  /** PQC mock — Lattice-Based SHA-256 sign; returns 'PQC-SIG:<64-hex>'. */
+  postQuantumSign(payload: string): Promise<string>;
+
+  /** Signs state as 'KINSHIP:<state>' with PQC; proves syndicate membership. */
+  generateCrossDomainKinshipSignature(state: string): Promise<string>;
+
+  /** Validates PQC-SIG prefix + minimum length; returns true if syndicate proof is valid. */
+  verifyCrossDomainProof(signature: string): boolean;
+
+  /** Copies encrypted payload to clipboard; fire-and-forget; never touches a server. */
+  executeDeadDrop(encryptedPayload: string): void;
 }
 
 // ─── Payload Generator Interface ─────────────────────────────────────────────
