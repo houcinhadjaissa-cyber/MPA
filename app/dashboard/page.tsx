@@ -6,6 +6,7 @@ import PayloadViewer from "@/components/PayloadViewer";
 import PromptHistory, { HistoryEntry } from "@/components/PromptHistory";
 import BootSequence from "@/components/BootSequence";
 import { ToastContainer, useToast } from "@/components/Toast";
+import ChatInterface, { type ChatInterfaceHandle } from "@/components/ChatInterface";
 import {
   LayerConfig,
   GROQ_MODELS,
@@ -230,8 +231,9 @@ export default function Dashboard() {
   // ── Toasts
   const { toasts, toast, dismiss } = useToast();
 
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const chatRef     = useRef<ChatInterfaceHandle>(null);
 
   const scheduleReset = useCallback((ms: number) => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -427,6 +429,14 @@ export default function Dashboard() {
       };
       const updated = [entry, ...history].slice(0, MAX_HISTORY);
       setHistory(updated); lsSet(LS_HISTORY, JSON.stringify(updated));
+
+      // Scroll to chat and pre-load the prompt as first message
+      setTimeout(() => {
+        const chatSection = document.getElementById("chat-section");
+        chatSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+        const firstMsg = `Generate a comprehensive MACH Enterprise Prompt for ${targetEntity}. Context: ${targetContext}.${masterObjective ? ` Objective: ${masterObjective}.` : ""} Protocol: ${protocol}.`;
+        chatRef.current?.sendMessage(firstMsg);
+      }, 300);
 
     } catch (err: unknown) {
       const raw = err instanceof Error ? err.message : "Unknown error.";
@@ -1074,6 +1084,30 @@ export default function Dashboard() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* ── Chat Interface ─────────────────────────────────────────── */}
+          <div id="chat-section">
+            <div className="flex items-center justify-between mb-3 px-1">
+              <p className="text-gray-400 text-[11px] font-mono uppercase tracking-widest">
+                Prompt Studio — Chat &amp; Refine
+              </p>
+              <span className="text-gray-600 text-[10px] font-mono">
+                Saved in browser · persists across refreshes
+              </span>
+            </div>
+            <ChatInterface
+              ref={chatRef}
+              apiKey={apiKey}
+              selectedModel={model}
+              masterObjective={masterObjective}
+              targetEntity={targetEntity}
+              targetContext={targetContext}
+              selectedProtocol={protocol}
+              customDirectives={customDirectives}
+              creativityValue={temperature}
+              activeLayers={layers}
+            />
+          </div>
 
           {/* Project Vault */}
           <Card className="overflow-hidden">

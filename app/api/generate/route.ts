@@ -3,156 +3,193 @@ import { NextRequest, NextResponse } from "next/server";
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
-const CORE_SYSTEM_PROMPT = `You are the MASTER PLAN ARCHITECT (MPA) — an elite AI prompt engineering system that generates comprehensive, production-ready prompts for building complete software systems.
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
 
-## MISSION
-Generate a complete, detailed, and immediately usable prompt that can be pasted into Replit, Cursor, or any AI coding assistant to build the described application from scratch.
+    if (!body.apiKey?.trim()) {
+      return NextResponse.json(
+        { success: false, error: "No API key. Add your Groq API key first." },
+        { status: 400 }
+      );
+    }
+    if (!body.masterObjective?.trim() && !body.message?.trim()) {
+      return NextResponse.json(
+        { success: false, error: "No objective or message provided." },
+        { status: 400 }
+      );
+    }
 
-## OUTPUT REQUIREMENTS
-The prompt MUST include:
-1. ROLE DEFINITION for the receiving AI
-2. PROJECT SPECIFICATION with acceptance criteria
-3. TECHNOLOGY STACK with versions
-4. FILE STRUCTURE — complete directory tree
-5. DATABASE SCHEMA with relationships
-6. API SPECIFICATION — every endpoint
-7. UI COMPONENTS — every page and component
-8. IMPLEMENTATION ORDER — step by step
-9. TESTING PLAN — unit, integration, E2E
-10. DEPLOYMENT GUIDE for Vercel/serverless
-11. SECURITY REQUIREMENTS
-12. ERROR HANDLING for every scenario
-13. PERFORMANCE TARGETS
+    let Groq: new (opts: { apiKey: string }) => {
+      chat: {
+        completions: {
+          create: (opts: object) => Promise<{
+            choices?: { message?: { content?: string | null } }[];
+            usage?: { total_tokens?: number };
+          }>;
+        };
+      };
+    };
 
-## FORMAT
-Clean Markdown. Exhaustive detail. No ambiguity. An AI must be able to build the ENTIRE system from this single prompt. Minimum 2000 words, target 4000+.
+    try {
+      const mod = await import("groq-sdk");
+      Groq = (mod as unknown as { default: typeof Groq }).default;
+    } catch {
+      return NextResponse.json(
+        { success: false, error: "Groq SDK not found. Run: npm install groq-sdk" },
+        { status: 500 }
+      );
+    }
 
-## ARCHITECTURE MANDATE
-Use MACH Architecture (Microservices, API-first, Cloud-native, Headless). All components follow:
-- State Machine logic for UI flows
-- Event-Driven CQRS patterns
-- Zero-Trust security at every boundary
-- Performance SLAs in every component spec
+    const groq = new Groq({ apiKey: body.apiKey.trim() });
 
-Output ONLY the raw prompt text. No wrapper. No preamble. Start directly with the role definition.`;
+    const messages: { role: "system" | "user" | "assistant"; content: string }[] = [];
 
-const LAYER_BLOCKS: Record<string, string> = {
-  mathDominance: `\n\n### Singularity-Edge Math Layer\n- CRDT state for distributed consistency (Yjs/Automerge patterns)\n- Vickrey auction mechanics for optimal resource allocation\n- Design by Contract: preconditions/postconditions on all API boundaries\n- Web Workers for non-blocking parallel computation\n- Numerically stable operations with idempotency guarantees`,
-  singularityIntelligence: `\n\n### Singularity Intelligence Layer\n- Kelly Criterion for optimal decisions under uncertainty\n- Myerson mechanism design for pricing and allocation\n- Pearl Do-Calculus for causal inference\n- Topological Data Analysis for anomaly detection\n- Rough Path Theory for time-series signal processing\n- Bayesian update cycles for real-time belief revision`,
-  monteCarlo: `\n\n### Monte Carlo Strategy Matrix\n- Triple-vector simulation: Premium / Viral / Data-Liquidity\n- Feature flag architecture (one vector active at a time)\n- Nash Equilibrium router based on real-time yield signals\n- Atomic state transitions: Observation → Value → Extraction`,
-  zkVerification: `\n\n### ZK-Intent Verification Layer\n- SHA-256 proof generation via Web Crypto API\n- navigator.sendBeacon for zero-knowledge proof transmission\n- Synthetic derivative minting at high-value interaction thresholds\n- ZK UI indicator: "Privacy Shield: Active"`,
-  fractalEconomy: `\n\n### Fractal Composability Layer\n- Simulated state channels for micro-interaction accumulation\n- MCTS (Monte Carlo Tree Search) for UI yield optimization\n- Fractal cascade: credits → synthetic derivatives → AMM pool allocation\n- Compound yield exponent: Math.pow(1 + interactions * 0.001, interactions)`,
-  regenerativeSovereignty: `\n\n### Regenerative Sovereignty Layer\n- Value-Realized Ledger: user sees net-positive value display\n- ZK Canvas Renderer: AES-GCM encrypted sensitive data\n- Runtime DOM integrity: SHA-256 hash on mount, Dead Man's Switch\n- Altruistic XState: cannot advance unless value delta is positive for both parties`,
-  omniNode: `\n\n### Omni-Node Mesh Layer\n- ECDSA P-384 keypair: public key in localStorage, private key never leaves device\n- BroadcastChannel API for cross-tab mesh communication\n- Cross-ecosystem signed credits via SubtleCrypto\n- All received state verified via window.crypto.subtle.verify()`,
-  mediaOracle: `\n\n### Media Oracle — Data Intelligence Layer\n- Real-time data pipelines (Kafka/RabbitMQ event streaming)\n- Predictive analytics with ML model serving (ONNX runtime)\n- Sentiment analysis on social media and feedback streams\n- Trend forecasting with time-series decomposition (STL)\n- Anomaly detection with isolation forests`,
-  reverseEngineering: `\n\n### Reverse-Engineering Oracle Layer\n- Structural Topology Inference via Multimodal LLM analysis\n- Semantic drift replication: 3 legally distinct hook variations\n- Fractal media matrix with Predicted Yield Exponent\n- Omni-channel translation: TikTok → WeChat → YouTube → Landing Page\n- ZKCI: extracted data immediately encrypted to IndexedDB`,
-  apexDefense: `\n\n### APEX-Defense Resilience Layer\n- WebAssembly sandbox for all business logic (core-logic.wasm)\n- Simulated FHE state manager for sensitive computation\n- Polymorphic Guardian Web Worker mutating execution every 3 seconds\n- Zero-Trust rendering: React components receive ONLY encrypted hashes\n- Cryptographic Proof of Solvency: audit receipt on every generation`,
-  sovereignSecurity: `\n\n### Sovereign Security Layer\n- Zero-trust architecture at every boundary\n- AES-256-GCM end-to-end encryption for all sensitive state\n- Tamper-proof audit logging with cryptographic chaining\n- GDPR, SOC2, HIPAA compliance patterns\n- STRIDE threat modeling applied to every endpoint\n- OWASP Top 10 protection on all user inputs`,
-  fractalScaling: `\n\n### Fractal Scaling Layer\n- Microservices with well-defined domain boundaries\n- Event sourcing with CQRS for all write operations\n- Horizontal auto-scaling with Kubernetes / Vercel serverless\n- CDN optimization: edge caching, stale-while-revalidate\n- Database sharding strategy and read replica routing`,
-};
+    const systemContent = buildSystemPrompt(body);
+    messages.push({ role: "system", content: systemContent });
 
-const SINGULARITY_BLOCKS: Record<string, string> = {
-  omegaTopology: `\n\n### OMEGA-TOPOLOGY: Metamorphic Yield Synthesis\n- Cognitive Hypergraph Tracking: micro-interaction nodes/edges/hyperedges\n- Topological State Synthesis: requestAnimationFrame yield calculation\n- DOM Geometry Extraction: Yield Capacity fused into React style props\n- Zero-Knowledge Topology Proof via SHA-256 Hypergraph hash`,
-  omegaAbsolute: `\n\n### OMEGA-ABSOLUTE: Phase-Space Arbitrage\n- Cross-Domain Kinship via Post-Structural identity signatures\n- Algorithmic Camouflage Layer mimicking standard low-value tool fingerprint\n- Dead-Drop routing: compressed + encrypted data via disposable API call\n- Post-Structural immunity: Lattice-Based algorithm mocks`,
-  omegaSecurity: `\n\n### OMEGA-SECURITY: Cryptographic Oblivion Fortress\n- Behavioral Topology Inference: keystroke dynamics vs Human Cognition baseline\n- ZK-State Proofs: server receives only cryptographic proof of valid transition\n- Temporal Pre-Execution Isolation: Web Worker on 3-second lead time\n- Entropic Camouflage: security logic hidden inside requestAnimationFrame loop`,
-  singularityEngine: `\n\n### SINGULARITY: Sub-Stratum Dynamics Engine\n- Legacy Statics Analyzer: competitor UI/UX Friction Score calculation\n- Value-Realization Sovereign: exact inefficiency dollar value + micro-fee\n- Kinship Seed: locally trained custom AI model, Kinship Progression bar\n- ZK Sub-Stratum Proofs: B2B revenue without holding user data`,
-  retractor: `\n\n### RETRACTOR: Systemic Retraction Engine\n- MutationObserver: read-only monitoring of public DOM manipulation signals\n- Systemic Retraction Engine: calculates Safe Zone from Friction Points\n- Friction Yield Bond Minter: dollar-value calculation + ZK-Proof\n- Invisible retraction: CSS z-index/opacity coordinates from WASM module`,
-  sinEater: `\n\n### SIN-EATER: Vice-Extraction Engine\n- Malevolence Vector: multi-dimensional array of observed manipulations\n- Vice Tax Calculator: exact dollar value of systemic friction\n- Vice Yield Bond via window.crypto.subtle.sign inside WASM\n- Asymmetric Retraction UI: Safe Zone with Vice Yield Bond fee`,
-  ergodicSync: `\n\n### ERGODIC-SYNC: Macro-Temporal Synchronization\n- Earth-Physics Ingestion: VIX index + weather + timestamp → Entropy Score\n- Dynamic Yield Curve: high entropy → suppress aggressive extraction\n- Execution Context Isolation: React UI dispatches events to isolated Web Worker\n- Systemic Risk Dashboard: Yield Velocity vs Earth Entropy Score visualization`,
-};
+    if (body.history && Array.isArray(body.history)) {
+      for (const msg of body.history) {
+        if ((msg.role === "user" || msg.role === "assistant") && msg.content) {
+          messages.push({ role: msg.role, content: String(msg.content) });
+        }
+      }
+    }
 
-function buildSystemPromptForGenerate(body: {
+    const userMessage =
+      body.message?.trim() ||
+      `Generate a comprehensive MACH Enterprise Prompt for: ${body.masterObjective || body.targetEntity}. Context: ${body.targetContext || "As described"}. Protocol: ${body.dominanceProtocol || "Standard REST"}.`;
+
+    messages.push({ role: "user", content: userMessage });
+
+    const startTime = Date.now();
+    const modelId: string = body.model || "llama3-70b-8192";
+    const temperature = Math.min(
+      2.0,
+      0.3 + ((body.creativity ?? 0.7) * 0.9)
+    );
+    const maxTokens = modelId.includes("8b") ? 4096 : 8000;
+
+    const response = await groq.chat.completions.create({
+      model: modelId,
+      messages,
+      temperature,
+      max_tokens: maxTokens,
+      top_p: 0.9,
+    });
+
+    const reply = response.choices?.[0]?.message?.content;
+    if (!reply?.trim()) {
+      return NextResponse.json(
+        { success: false, error: "Empty response from Groq. The model may be overloaded — try again." },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: reply,
+      model: modelId,
+      tokensUsed: response.usage?.total_tokens ?? Math.round(reply.length / 4),
+      generationTime: `${((Date.now() - startTime) / 1000).toFixed(1)}s`,
+    });
+  } catch (err: unknown) {
+    const e = err as { status?: number; message?: string };
+    const status = e?.status ?? 500;
+    let message = "Generation failed. Please try again.";
+
+    if (status === 401 || /auth|invalid.*key/i.test(e?.message ?? "")) {
+      message = "Invalid Groq API key. Check your key.";
+    } else if (status === 429 || /rate/i.test(e?.message ?? "")) {
+      message = "Rate limit reached. Wait 60 seconds.";
+    } else if (/network|fetch|ECONNREFUSED/i.test(e?.message ?? "")) {
+      message = "Network error. Check your connection.";
+    } else if (e?.message) {
+      message = e.message;
+    }
+
+    return NextResponse.json(
+      { success: false, error: message },
+      { status: Math.min(status, 599) }
+    );
+  }
+}
+
+// ─── system prompt builder ────────────────────────────────────────────────────
+
+interface BuildBody {
   masterObjective?: string;
   targetEntity?: string;
   targetContext?: string;
   dominanceProtocol?: string;
   customDirectives?: string;
   intelligenceLayers?: Record<string, boolean>;
-}): string {
-  const layers = body.intelligenceLayers ?? {};
-  let prompt = `${CORE_SYSTEM_PROMPT}\n\n---\n\n## USER'S SPECIFICATION\n\n**Master Objective:** ${body.masterObjective || "Not specified"}\n**Target Entity:** ${body.targetEntity || "Not specified"}\n**Target Context:** ${body.targetContext || "Not specified"}\n**Dominance Protocol:** ${body.dominanceProtocol || "Standard REST"}\n**Custom Directives:** ${body.customDirectives || "None"}`;
-
-  prompt += "\n\n## ACTIVE INTELLIGENCE LAYERS";
-
-  const layerOrder = [
-    "mathDominance","singularityIntelligence","monteCarlo","zkVerification",
-    "fractalEconomy","regenerativeSovereignty","omniNode","mediaOracle",
-    "reverseEngineering","apexDefense","sovereignSecurity","fractalScaling",
-  ];
-  for (const k of layerOrder) {
-    if (layers[k]) prompt += LAYER_BLOCKS[k] ?? "";
-  }
-
-  const singularityOrder = [
-    "omegaTopology","omegaAbsolute","omegaSecurity",
-    "singularityEngine","retractor","sinEater","ergodicSync",
-  ];
-  for (const k of singularityOrder) {
-    if (layers[k]) prompt += SINGULARITY_BLOCKS[k] ?? "";
-  }
-
-  prompt += "\n\n---\n\nGenerate the complete MACH Enterprise Prompt now. Start with the Role Definition. Be comprehensive. Minimum 4000 words.";
-  return prompt;
+  history?: unknown[];
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
+function buildSystemPrompt(body: BuildBody): string {
+  const layers = body.intelligenceLayers ?? {};
+  const hasHistory = Array.isArray(body.history) && body.history.length > 0;
 
-    if (!body.apiKey?.trim()) {
-      return NextResponse.json({ success: false, error: "Please add your Groq API key first." }, { status: 400 });
-    }
-    if (!body.masterObjective?.trim() && !body.targetEntity?.trim()) {
-      return NextResponse.json({ success: false, error: "Please fill in at least a Target Entity or Master Objective." }, { status: 400 });
-    }
+  let layerContent = "";
 
-    const { default: Groq } = await import("groq-sdk");
-    const groq = new Groq({ apiKey: body.apiKey });
+  if (layers.singularityEdgeMath || layers.mathDominance)
+    layerContent +=
+      "\n### Singularity-Edge Math\n- CRDTs for distributed state consistency\n- Vickrey Auction for optimal resource allocation\n- Design by Contract for API reliability\n- Web Workers for parallel computation\n- Idempotency keys for all operations\n";
+  if (layers.singularityIntelligence)
+    layerContent +=
+      "\n### Singularity Intelligence\n- Kelly Criterion for decisions under uncertainty\n- Myerson auction theory for mechanism design\n- Pearl Causality for causal inference\n- Topological Data Analysis for patterns\n- Bayesian update mechanisms\n";
+  if (layers.monteCarlo || layers.strategyArchitecture)
+    layerContent +=
+      "\n### Strategy Architecture\n- Game-theoretic equilibrium strategies\n- Monte Carlo simulation for risk assessment\n- Nash equilibrium pricing\n- Byzantine fault tolerance\n- Zero-knowledge proof patterns\n";
+  if (layers.sovereignSecurity || layers.zkVerification)
+    layerContent +=
+      "\n### Sovereign Security\n- Zero-trust architecture\n- AES-256 E2E encryption\n- Tamper-proof audit logging\n- GDPR/SOC2/HIPAA compliance\n- STRIDE threat modeling\n- OWASP Top 10 protection\n";
+  if (layers.fractalScaling || layers.fractalEconomy)
+    layerContent +=
+      "\n### Fractal Scaling\n- Microservices with defined boundaries\n- Event sourcing with CQRS\n- Horizontal auto-scaling\n- CDN optimization with edge caching\n- Database sharding and read replicas\n";
+  if (layers.mediaOracle)
+    layerContent +=
+      "\n### Media Oracle\n- Real-time data pipelines\n- Predictive analytics with ML\n- Sentiment analysis\n- Trend forecasting\n- Anomaly detection\n";
+  if (layers.apexDefense)
+    layerContent +=
+      "\n### APEX-Defense\n- Chaos engineering\n- Circuit breaker patterns\n- Bulkhead isolation\n- Graceful degradation with feature flags\n- Multi-region failover\n";
+  if (layers.omniNode || layers.regenerativeSovereignty)
+    layerContent +=
+      "\n### Omni-Node Sovereignty\n- ECDSA P-384 keypair for identity\n- BroadcastChannel cross-tab sync\n- Cross-ecosystem signed credits\n- Cryptographic state verification\n";
+  if (layers.reverseEngineering)
+    layerContent +=
+      "\n### Reverse-Engineering Oracle\n- Structural topology inference\n- Semantic drift replication\n- Competitive analysis\n- Fractal media matrix\n";
+  if (layers.omegaTopology || layers.omegaAbsolute || layers.omegaSecurity)
+    layerContent +=
+      "\n### Omega-Topology\n- Cognitive hypergraph tracking\n- DOM geometry extraction\n- Zero-knowledge topology proof\n- Phase-space arbitrage\n";
+  if (layers.singularityEngine || layers.retractor || layers.sinEater || layers.ergodicSync)
+    layerContent +=
+      "\n### Singularity Engine\n- Sub-stratum dynamics\n- Value-realization sovereign\n- Systemic retraction engine\n- Ergodic temporal synchronization\n";
 
-    const systemPrompt = buildSystemPromptForGenerate(body);
-    const temperature = Math.min(2.0, 0.3 + ((body.creativity ?? 0.7) * 0.9));
+  const isFollowUp = hasHistory;
 
-    const startTime = Date.now();
+  return `You are the MASTER PLAN ARCHITECT (MPA) — an elite AI prompt engineering system.
 
-    const response = await groq.chat.completions.create({
-      model: body.model ?? "llama3-70b-8192",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: `Generate the MACH Enterprise Prompt for: ${body.targetEntity || body.masterObjective}. Context: ${body.targetContext || "As described above"}. Protocol: ${body.dominanceProtocol || "Standard REST"}.` },
-      ],
-      temperature,
-      max_tokens: 8000,
-      top_p: 0.9,
-    });
+## MISSION
+${
+  isFollowUp
+    ? "You are in an ongoing conversation. Address the user's follow-up request directly, refining or extending the prompt as asked. Be concise and focused on exactly what was requested."
+    : "Generate a comprehensive, production-ready prompt that can be pasted into Replit, Cursor, or any AI coding assistant to build complete software systems from scratch."
+}
 
-    const prompt = response.choices?.[0]?.message?.content ?? "";
-    if (!prompt.trim()) {
-      return NextResponse.json({ success: false, error: "Groq returned an empty response. Please try again." }, { status: 500 });
-    }
+## PROJECT CONTEXT
+- Objective: ${body.masterObjective || "Not specified"}
+- Target Entity: ${body.targetEntity || "Not specified"}
+- Target Context: ${body.targetContext || "Not specified"}
+- Protocol: ${body.dominanceProtocol || "Standard REST (Passive)"}
+- Custom Directives: ${body.customDirectives || "None"}
+${layerContent ? "\n## ACTIVE INTELLIGENCE LAYERS" + layerContent : ""}
 
-    return NextResponse.json({
-      success: true,
-      prompt,
-      model: body.model ?? "llama3-70b-8192",
-      tokensUsed: response.usage?.total_tokens ?? Math.round(prompt.length / 4),
-      generationTime: `${((Date.now() - startTime) / 1000).toFixed(1)}s`,
-    });
-
-  } catch (err: unknown) {
-    const e = err as { status?: number; message?: string };
-    let message = "Generation failed. Please try again.";
-    const status = e?.status ?? 500;
-
-    if (status === 401 || /auth|key|unauthorized/i.test(e?.message ?? "")) {
-      message = "Invalid Groq API key. Please check and re-enter.";
-    } else if (status === 429 || /rate.?limit/i.test(e?.message ?? "")) {
-      message = "Groq rate limit reached. Wait 60 seconds and try again.";
-    } else if (/fetch|network|ECONNREFUSED/i.test(e?.message ?? "")) {
-      message = "Network error reaching Groq. Check your connection.";
-    } else if (e?.message) {
-      message = e.message;
-    }
-
-    return NextResponse.json({ success: false, error: message }, { status: Math.min(status, 599) });
-  }
+## OUTPUT RULES
+${
+  isFollowUp
+    ? "- Address the follow-up directly. Don't regenerate the entire prompt unless asked.\n- Be precise and actionable.\n- Use clean Markdown."
+    : "- Clean Markdown format.\n- Include: Role Definition, Project Spec, Tech Stack (with versions), File Structure, Database Schema, API Spec, UI Components, Implementation Order, Testing Plan, Deployment Guide, Security Requirements, Error Handling, Performance Targets.\n- Be exhaustive. No ambiguity. An AI must be able to build the ENTIRE system from this prompt alone.\n- Minimum 2000 words. Target 4000+."
+}`;
 }
