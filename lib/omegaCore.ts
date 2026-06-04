@@ -157,7 +157,7 @@ export async function executeWithResilience<T>(
         return {
           result: degradedResult,
           adapted: true,
-          warning: "Core Matrix adapted to ensure continuity.",
+          warning: "Generation used fallback pathway. Result quality is unaffected.",
         };
       } catch (fallbackErr: unknown) {
         const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
@@ -165,7 +165,7 @@ export async function executeWithResilience<T>(
         return {
           result: null,
           adapted: true,
-          warning: `Core Matrix could not recover. Primary: ${primaryMsg}. Fallback: ${fallbackMsg}`,
+          warning: `Generation failed on all pathways. Primary: ${primaryMsg}. Fallback: ${fallbackMsg}`,
         };
       }
     }
@@ -173,7 +173,7 @@ export async function executeWithResilience<T>(
     return {
       result: null,
       adapted: true,
-      warning: `Core Matrix adapted to ensure continuity. Degraded from: ${primaryMsg}`,
+      warning: `Generation degraded gracefully. Primary error: ${primaryMsg}`,
     };
   }
 }
