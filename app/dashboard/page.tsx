@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback, useReducer, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import PayloadViewer from "@/components/PayloadViewer";
 import PromptHistory, { HistoryEntry } from "@/components/PromptHistory";
+import BootSequence from "@/components/BootSequence";
+import { ToastContainer, useToast } from "@/components/Toast";
 import {
-  generatePayload,
-  GenerateOptions,
   LayerConfig,
   GROQ_MODELS,
   INDUSTRY_TEMPLATES,
@@ -20,9 +20,9 @@ const LS_OBJECTIVE  = "mpa_master_objective";
 const LS_DIRECTIVES = "mpa_custom_directives";
 const LS_HISTORY    = "mpa_prompt_history";
 const LS_PROJECTS   = "mpa_projects";
+const LS_AUTOSAVE   = "mpa_autosave";
 const MAX_HISTORY   = 20;
 
-// Guards: all localStorage reads ONLY happen inside useEffect (client-side only)
 function lsGet(key: string, fallback = ""): string {
   if (typeof window === "undefined") return fallback;
   try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
@@ -49,7 +49,7 @@ function maskKey(key: string): string {
   return key.slice(0, 7) + "·".repeat(10);
 }
 
-// ── Layer Reducer (real Reducer pattern — replaces individual useState booleans) ──
+// ── Layer Reducer ─────────────────────────────────────────────────────────────
 type LayerKey = LayerConfig["key"];
 type LayerState = Record<LayerKey, boolean>;
 type LayerAction =
@@ -74,10 +74,8 @@ function layerReducer(state: LayerState, action: LayerAction): LayerState {
   }
 }
 
-// ── Island mode ───────────────────────────────────────────────────────────────
 type IslandMode = "idle" | "generating" | "success" | "error" | "keyTesting" | "keyValid" | "keyInvalid";
 
-// ── Design tokens ─────────────────────────────────────────────────────────────
 const BG_CARD  = "bg-[#2C2C2E]";
 const BORDER   = "border border-white/5";
 const INPUT_CLASS =
@@ -145,7 +143,6 @@ function DynamicIsland({ mode, errorMsg }: { mode: IslandMode; errorMsg?: string
   );
 }
 
-// ── IosToggle — CSS transition, bg-[#39393D] off state ───────────────────────
 function IosToggle({ active, onChange, color }: {
   active: boolean; onChange: (v: boolean) => void; color: string;
 }) {
@@ -163,7 +160,6 @@ function IosToggle({ active, onChange, color }: {
   );
 }
 
-// ── Card + Layer Row ──────────────────────────────────────────────────────────
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <div className={`${BG_CARD} rounded-2xl ${BORDER} ${className}`}>{children}</div>;
 }
@@ -186,8 +182,19 @@ function LayerRow({ active, onChange, label, sublabel, color }: {
   );
 }
 
+// ── Keyboard shortcut hint ────────────────────────────────────────────────────
+function KbdHint({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#3A3A3C] text-gray-500 text-[10px] font-mono border border-white/5">
+      {children}
+    </span>
+  );
+}
+
 // ════════════════════════════════════════════════════════════════════════════════
 export default function Dashboard() {
+  const [booting, setBooting] = useState(true);
+
   // ── Non-layer inputs
   const [masterObjective,  setMasterObjective]  = useState("");
   const [targetEntity,     setTargetEntity]     = useState("");
@@ -199,7 +206,7 @@ export default function Dashboard() {
   const [model,       setModel]       = useState(GROQ_MODELS[0].id);
   const [temperature, setTemperature] = useState(0.7);
 
-  // ── Layer state via Reducer (TOGGLE action dispatched per interaction)
+  // ── Layer state via Reducer
   const [layers, dispatchLayer] = useReducer(layerReducer, INITIAL_LAYERS);
 
   // ── Output
@@ -208,6 +215,7 @@ export default function Dashboard() {
   const [durationMs,   setDurationMs]   = useState(0);
   const [activeModel,  setActiveModel]  = useState("");
   const [adaptWarning, setAdaptWarning] = useState<string | null>(null);
+  const [isStreaming,  setIsStreaming]  = useState(false);
 
   // ── UX
   const [loading,    setLoading]    = useState(false);
@@ -219,7 +227,12 @@ export default function Dashboard() {
   const [projects,     setProjects]     = useState<SavedProject[]>([]);
   const [projectLabel, setProjectLabel] = useState("");
 
+  // ── Toasts
+  const { toasts, toast, dismiss } = useToast();
+
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const scheduleReset = useCallback((ms: number) => {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => setIslandMode("idle"), ms);
@@ -233,29 +246,70 @@ export default function Dashboard() {
     setCustomDirectives(lsGet(LS_DIRECTIVES));
     setHistory(lsGetJSON<HistoryEntry[]>(LS_HISTORY, []));
     setProjects(lsGetJSON<SavedProject[]>(LS_PROJECTS, []));
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+
+    // Check for autosaved session
+    const saved = lsGetJSON<{ masterObjective?: string; targetEntity?: string; targetContext?: string; savedAt?: number } | null>(LS_AUTOSAVE, null);
+    if (saved?.savedAt && Date.now() - saved.savedAt < 24 * 60 * 60 * 1000) {
+      if (saved.targetEntity) setTargetEntity(saved.targetEntity);
+      if (saved.targetContext) setTargetContext(saved.targetContext);
+    }
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
+    };
   }, []);
 
   useEffect(() => { lsSet(LS_APIKEY,     apiKey); },           [apiKey]);
   useEffect(() => { lsSet(LS_OBJECTIVE,  masterObjective); },  [masterObjective]);
   useEffect(() => { lsSet(LS_DIRECTIVES, customDirectives); }, [customDirectives]);
 
+  // ── Auto-save form state every 30s ──────────────────────────────────────────
+  useEffect(() => {
+    if (!targetEntity && !targetContext && !masterObjective) return;
+    if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
+    autoSaveRef.current = setTimeout(() => {
+      lsSet(LS_AUTOSAVE, JSON.stringify({
+        masterObjective, targetEntity, targetContext,
+        protocol, customDirectives, temperature, model,
+        savedAt: Date.now(),
+      }));
+    }, 30_000);
+    return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current); };
+  }, [masterObjective, targetEntity, targetContext, protocol, customDirectives, temperature, model]);
+
   // ── Test API key ─────────────────────────────────────────────────────────────
   const testKey = useCallback(async () => {
     if (!apiKey.trim()) return;
     setIslandMode("keyTesting");
     try {
-      const res = await fetch("https://api.groq.com/openai/v1/models", {
-        headers: { Authorization: `Bearer ${apiKey}` },
+      const res = await fetch("/api/validate-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey }),
       });
-      setIslandMode(res.ok ? "keyValid" : "keyInvalid");
+      const data = await res.json();
+      if (data.valid) {
+        setIslandMode("keyValid");
+        toast("API key validated ✓", "success");
+      } else {
+        setIslandMode("keyInvalid");
+        toast(data.error || "Invalid API key", "error");
+      }
       scheduleReset(3000);
-    } catch { setIslandMode("keyInvalid"); scheduleReset(3000); }
-  }, [apiKey, scheduleReset]);
+    } catch {
+      setIslandMode("keyInvalid");
+      toast("Key validation failed. Check your connection.", "error");
+      scheduleReset(3000);
+    }
+  }, [apiKey, scheduleReset, toast]);
 
   const applyTemplate = (i: number) => {
-    setTargetEntity(INDUSTRY_TEMPLATES[i].entity);
-    setTargetContext(INDUSTRY_TEMPLATES[i].context);
+    const t = INDUSTRY_TEMPLATES[i];
+    setTargetEntity(t.entity);
+    setTargetContext(t.context);
+    if (t.masterObjective) setMasterObjective(t.masterObjective);
+    toast(`Template loaded: ${t.label}`, "info", 2000);
   };
 
   // ── Project Vault ─────────────────────────────────────────────────────────────
@@ -269,56 +323,166 @@ export default function Dashboard() {
     const updated = [entry, ...projects].slice(0, 20);
     setProjects(updated); lsSet(LS_PROJECTS, JSON.stringify(updated));
     setProjectLabel("");
+    toast("Project context saved", "success", 2000);
   };
   const loadProject  = (p: SavedProject) => {
     setTargetEntity(p.entity); setTargetContext(p.context);
     setMasterObjective(p.masterObjective); setProtocol(p.protocol);
+    toast(`Project loaded: ${p.label}`, "info", 2000);
   };
   const deleteProject = (id: string) => {
     const u = projects.filter(p => p.id !== id);
     setProjects(u); lsSet(LS_PROJECTS, JSON.stringify(u));
   };
-  const resetApiKey = () => { setApiKey(""); lsRemove(LS_APIKEY); };
+  const resetApiKey = () => {
+    setApiKey(""); lsRemove(LS_APIKEY);
+    toast("API key cleared", "info", 2000);
+  };
 
-  // ── Generate ──────────────────────────────────────────────────────────────────
+  // ── Generate via streaming API route ─────────────────────────────────────────
   const handleGenerate = useCallback(async () => {
     setError(null); setPayload(""); setAdaptWarning(null);
-    setLoading(true); setIslandMode("generating");
+    setLoading(true); setIsStreaming(true); setIslandMode("generating");
+
+    const key = lsGet(LS_APIKEY);
+    if (!key.trim()) {
+      const msg = "Please add your Groq API key first.";
+      setError(msg); setIslandMode("error"); scheduleReset(6000);
+      setLoading(false); setIsStreaming(false);
+      toast(msg, "error", 5000);
+      return;
+    }
+
+    if (!targetEntity.trim()) {
+      const msg = "Target Entity is required.";
+      setError(msg); setIslandMode("error"); scheduleReset(4000);
+      setLoading(false); setIsStreaming(false);
+      toast(msg, "warning", 3000);
+      return;
+    }
+
+    if (!targetContext.trim()) {
+      const msg = "Target Context / URL is required.";
+      setError(msg); setIslandMode("error"); scheduleReset(4000);
+      setLoading(false); setIsStreaming(false);
+      toast(msg, "warning", 3000);
+      return;
+    }
+
+    const t0 = Date.now();
+
     try {
-      const opts: GenerateOptions = {
-        targetEntity, targetContext, masterObjective, customDirectives,
-        protocol, ...layers, apiKey, model, temperature,
-      };
-      const result = await generatePayload(opts);
-      setPayload(result.prompt);
-      setTokensUsed(result.tokensUsed);
-      setDurationMs(result.durationMs);
-      setActiveModel(result.model);
-      if (result.adapted && result.warning) setAdaptWarning(result.warning);
-      setIslandMode("success"); scheduleReset(2500);
+      const res = await fetch("/api/generate-stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          apiKey: key,
+          model,
+          masterObjective,
+          targetEntity,
+          targetContext,
+          dominanceProtocol: protocol,
+          customDirectives,
+          creativity: temperature,
+          intelligenceLayers: layers,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: "Generation failed. Please try again." }));
+        throw new Error(errData.error || "Generation failed. Please try again.");
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("Streaming not supported in this environment.");
+
+      const decoder = new TextDecoder();
+      let fullText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        fullText += chunk;
+        setPayload(fullText);
+      }
+
+      if (!fullText.trim()) {
+        throw new Error("Groq returned an empty response. The model may be overloaded — try again.");
+      }
+
+      const elapsed = Date.now() - t0;
+      setTokensUsed(Math.round(fullText.length / 4));
+      setDurationMs(elapsed);
+      setActiveModel(model);
+      setIslandMode("success");
+      scheduleReset(2500);
+      toast("✓ Prompt generated successfully!", "success");
 
       const entry: HistoryEntry = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        entity: targetEntity, model: result.model,
-        tokensUsed: result.tokensUsed, durationMs: result.durationMs,
-        prompt: result.prompt, createdAt: Date.now(),
+        entity: targetEntity, model,
+        tokensUsed: Math.round(fullText.length / 4), durationMs: elapsed,
+        prompt: fullText, createdAt: Date.now(),
       };
       const updated = [entry, ...history].slice(0, MAX_HISTORY);
       setHistory(updated); lsSet(LS_HISTORY, JSON.stringify(updated));
+
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Unknown error.";
-      setError(msg); setIslandMode("error"); scheduleReset(6000);
-    } finally { setLoading(false); }
+      const raw = err instanceof Error ? err.message : "Unknown error.";
+      let msg = raw;
+      // Translate any Core Matrix or technical messages to user-friendly
+      if (raw.includes("Core Matrix") || raw.includes("fetch failed") || raw.includes("NetworkError")) {
+        msg = "Network error. Check your connection and try again.";
+      } else if (raw.includes("401") || raw.includes("Unauthorized") || raw.includes("api key") || raw.includes("API key")) {
+        msg = "Invalid Groq API key. Please check and re-enter.";
+      } else if (raw.includes("429") || raw.includes("rate limit") || raw.includes("Rate limit")) {
+        msg = "Groq rate limit reached. Wait 60 seconds and try again.";
+      }
+      setError(msg);
+      setIslandMode("error");
+      scheduleReset(7000);
+      toast(msg, "error", 6000);
+    } finally {
+      setLoading(false);
+      setIsStreaming(false);
+    }
   }, [
     targetEntity, targetContext, masterObjective, customDirectives,
-    protocol, layers, apiKey, model, temperature, history, scheduleReset,
+    protocol, layers, model, temperature, history, scheduleReset, toast,
   ]);
+
+  // ── Keyboard shortcuts ───────────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const isCtrl = e.ctrlKey || e.metaKey;
+      if (!isCtrl) return;
+
+      switch (e.key) {
+        case "g":
+          e.preventDefault();
+          if (!loading) handleGenerate();
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          setTemperature(v => Math.min(1.0, parseFloat((v + 0.1).toFixed(1))));
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          setTemperature(v => Math.max(0.1, parseFloat((v - 0.1).toFixed(1))));
+          break;
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [loading, handleGenerate]);
 
   const handleLoadHistory = (e: HistoryEntry) => {
     setPayload(e.prompt); setTokensUsed(e.tokensUsed);
     setDurationMs(e.durationMs); setActiveModel(e.model);
+    toast("Prompt loaded from history", "info", 2000);
   };
-  const handleClearHistory = () => { setHistory([]); lsRemove(LS_HISTORY); };
+  const handleClearHistory = () => { setHistory([]); lsRemove(LS_HISTORY); toast("History cleared", "info", 2000); };
 
   // ── Derived values ────────────────────────────────────────────────────────────
   const activeLayers  = Object.values(layers).filter(Boolean).length;
@@ -341,592 +505,625 @@ export default function Dashboard() {
 
   // ════════════════════════════════════════════════════════════════════════════════
   return (
-    <div className="min-h-screen bg-[#1C1C1E]">
-      <div className="max-w-3xl mx-auto px-6 md:px-10 py-10 space-y-4">
+    <>
+      {/* Boot Sequence */}
+      {booting && <BootSequence onComplete={() => setBooting(false)} />}
 
-        <DynamicIsland mode={islandMode} errorMsg={error ?? undefined} />
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onDismiss={dismiss} />
 
-        {/* Header */}
-        <div className="text-center mb-8">
-          <p className="text-[#30D158] text-[11px] font-mono uppercase tracking-[0.25em] mb-2">Master Plan Architect</p>
-          <h1 className="text-white text-4xl font-semibold tracking-tight"
-            style={{ fontFamily: "SF Pro Display, system-ui, -apple-system, sans-serif" }}>
-            MPA Terminal
-          </h1>
-          <p className="text-gray-400 text-sm mt-2">
-            MACH · Sovereign · Monte Carlo · ZK · Fractal · Media Oracle · APEX-DEFENSE
-          </p>
-        </div>
+      <div className="min-h-screen bg-[#1C1C1E]">
+        <div className="max-w-3xl mx-auto px-6 md:px-10 py-10 space-y-4">
 
-        {/* Model Selector */}
-        <Card className="p-1 flex gap-1">
-          {GROQ_MODELS.map(m => (
-            <button key={m.id} onClick={() => setModel(m.id)}
-              className={`flex-1 text-xs font-mono px-3 py-2 rounded-xl transition-all ${
-                model === m.id ? "bg-[#3A3A3C] text-white" : "text-gray-400 hover:text-white"
-              }`}>
-              {m.label}
-              <span className={`ml-1 text-[10px] ${model === m.id ? "text-gray-400" : "opacity-40"}`}>{m.speed}</span>
-            </button>
-          ))}
-        </Card>
+          <DynamicIsland mode={islandMode} errorMsg={error ?? undefined} />
 
-        {/* Quick Templates */}
-        <div>
-          <p className="text-gray-400 text-[11px] font-mono uppercase tracking-widest mb-3">Quick Templates</p>
-          <div className="flex gap-2 flex-wrap">
-            {INDUSTRY_TEMPLATES.map((t, i) => (
-              <button key={t.label} onClick={() => applyTemplate(i)}
-                className="text-xs font-mono px-3 py-1.5 rounded-full bg-[#2C2C2E] text-gray-400 hover:text-white hover:bg-[#3A3A3C] transition-colors border border-white/5">
-                {t.label}
+          {/* Header */}
+          <div className="text-center mb-8">
+            <p className="text-[#30D158] text-[11px] font-mono uppercase tracking-[0.25em] mb-2">Master Plan Architect</p>
+            <h1 className="text-white text-4xl font-semibold tracking-tight"
+              style={{ fontFamily: "SF Pro Display, system-ui, -apple-system, sans-serif" }}>
+              MPA Terminal
+            </h1>
+            <p className="text-gray-400 text-sm mt-2">
+              MACH · Sovereign · Monte Carlo · ZK · Fractal · Media Oracle · APEX-DEFENSE
+            </p>
+            <div className="flex items-center justify-center gap-3 mt-3">
+              <KbdHint>⌘G</KbdHint>
+              <span className="text-gray-600 text-[10px] font-mono">Generate</span>
+              <KbdHint>⌘↑</KbdHint>
+              <KbdHint>⌘↓</KbdHint>
+              <span className="text-gray-600 text-[10px] font-mono">Creativity</span>
+            </div>
+          </div>
+
+          {/* Model Selector */}
+          <Card className="p-1 flex gap-1">
+            {GROQ_MODELS.map(m => (
+              <button key={m.id} onClick={() => setModel(m.id)}
+                className={`flex-1 text-xs font-mono px-3 py-2 rounded-xl transition-all ${
+                  model === m.id ? "bg-[#3A3A3C] text-white" : "text-gray-400 hover:text-white"
+                }`}>
+                {m.label}
+                <span className={`ml-1 text-[10px] ${model === m.id ? "text-gray-400" : "opacity-40"}`}>{m.speed}</span>
               </button>
             ))}
-          </div>
-        </div>
+          </Card>
 
-        {/* API Key */}
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-white text-sm font-medium tracking-wide">Groq API Key</p>
-            <div className="flex gap-2">
-              {apiKey && (
-                <button onClick={testKey}
-                  className="text-xs font-mono px-3 py-1 rounded-full bg-[#1C1C1E] text-[#2997FF] hover:bg-[#3A3A3C] transition-colors border border-[#2997FF]/30">
-                  Test Key
+          {/* Quick Templates */}
+          <div>
+            <p className="text-gray-400 text-[11px] font-mono uppercase tracking-widest mb-3">Quick Templates</p>
+            <div className="flex gap-2 flex-wrap">
+              {INDUSTRY_TEMPLATES.map((t, i) => (
+                <button key={t.label} onClick={() => applyTemplate(i)}
+                  className="text-xs font-mono px-3 py-1.5 rounded-full bg-[#2C2C2E] text-gray-400 hover:text-white hover:bg-[#3A3A3C] transition-colors border border-white/5">
+                  {t.label}
                 </button>
-              )}
-              {apiKey && (
-                <button onClick={resetApiKey}
-                  className="text-xs font-mono px-3 py-1 rounded-full bg-[#1C1C1E] text-red-400 hover:bg-[#3A3A3C] transition-colors border border-red-500/20">
-                  Reset
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="relative">
-            <input type={showKey ? "text" : "password"} value={apiKey}
-              onChange={e => setApiKey(e.target.value)} placeholder="gsk_..."
-              className={INPUT_CLASS + " pr-24 font-mono"} />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-              {apiKey && !showKey && <span className="text-gray-600 text-[11px] font-mono hidden sm:inline">{maskKey(apiKey)}</span>}
-              <button onClick={() => setShowKey(v => !v)} className="text-xs text-gray-400 hover:text-white transition-colors font-mono">
-                {showKey ? "Hide" : "Show"}
-              </button>
-            </div>
-          </div>
-          <p className="text-gray-600 text-xs mt-2 font-mono">Stored in localStorage only · transmitted exclusively to api.groq.com</p>
-        </Card>
-
-        {/* Master Objective */}
-        <Card className="p-6">
-          <p className="text-white text-sm font-medium tracking-wide mb-3">Master Objective</p>
-          <textarea value={masterObjective} onChange={e => setMasterObjective(e.target.value)}
-            placeholder="e.g., 'I am building MPD, a private AI website builder. MPD's core function is to automatically wrap all user requests in MACH Enterprise Architecture…'"
-            rows={3} className={INPUT_CLASS + " resize-y leading-relaxed"} />
-        </Card>
-
-        {/* Target Entity + Context */}
-        <Card className="p-6 space-y-4">
-          <div>
-            <p className="text-white text-sm font-medium tracking-wide mb-3">Target Entity</p>
-            <input type="text" value={targetEntity} onChange={e => setTargetEntity(e.target.value)}
-              placeholder="e.g., Fleet Management E-commerce" className={INPUT_CLASS} />
-          </div>
-          <div>
-            <div className="flex justify-between items-center mb-3">
-              <p className="text-white text-sm font-medium tracking-wide">Target Context / URL</p>
-              <span className="text-gray-500 text-xs font-mono">~{estTokens} tokens</span>
-            </div>
-            <textarea value={targetContext} onChange={e => setTargetContext(e.target.value)}
-              placeholder="Describe the target architecture or paste a URL…"
-              rows={4} className={INPUT_CLASS + " resize-y leading-relaxed"} />
-          </div>
-        </Card>
-
-        {/* Protocol + Directives + Temperature + Generate */}
-        <Card className="p-6 space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <p className="text-white text-sm font-medium tracking-wide mb-3">Dominance Protocol</p>
-              <select value={protocol} onChange={e => setProtocol(e.target.value)}
-                className={INPUT_CLASS + " appearance-none cursor-pointer font-mono text-[#2997FF]"}>
-                {DOMINANCE_PROTOCOLS.map(p => (
-                  <option key={p.id} value={p.id} className="bg-[#1C1C1E]">{p.label}</option>
-                ))}
-              </select>
-              {selectedProto && <p className="text-gray-500 text-xs mt-1.5 font-mono">{selectedProto.description}</p>}
-            </div>
-            <div>
-              <p className="text-white text-sm font-medium tracking-wide mb-3">
-                Custom Directives <span className="text-gray-500 font-normal">(optional)</span>
-              </p>
-              <textarea value={customDirectives} onChange={e => setCustomDirectives(e.target.value)}
-                placeholder="e.g., 'Use Tailwind v4', 'Avoid Redux'."
-                rows={3} className={INPUT_CLASS + " resize-y text-xs leading-relaxed"} />
+              ))}
             </div>
           </div>
 
-          {/* Creativity slider */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <p className="text-white text-sm font-medium tracking-wide">Creativity</p>
-              <div className="flex items-center gap-2">
-                <span className="text-gray-400 text-xs font-mono">{temperature.toFixed(1)}</span>
-                <span className="text-gray-600 text-xs font-mono">→ API temp {(temperature * 1.2).toFixed(2)}</span>
+          {/* API Key */}
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-white text-sm font-medium tracking-wide">Groq API Key</p>
+              <div className="flex gap-2">
+                {apiKey && (
+                  <button onClick={testKey}
+                    className="text-xs font-mono px-3 py-1 rounded-full bg-[#1C1C1E] text-[#2997FF] hover:bg-[#3A3A3C] transition-colors border border-[#2997FF]/30">
+                    Test Key
+                  </button>
+                )}
+                {apiKey && (
+                  <button onClick={resetApiKey}
+                    className="text-xs font-mono px-3 py-1 rounded-full bg-[#1C1C1E] text-red-400 hover:bg-[#3A3A3C] transition-colors border border-red-500/20">
+                    Reset
+                  </button>
+                )}
               </div>
             </div>
-            <input type="range" min={0.1} max={1.0} step={0.1} value={temperature}
-              onChange={e => setTemperature(parseFloat(e.target.value))}
-              className="w-full h-1 accent-[#2997FF]" />
-            <div className="flex justify-between mt-1.5">
-              <span className="text-gray-600 text-xs font-mono">Precise</span>
-              <span className="text-gray-600 text-xs font-mono">Creative</span>
+            <div className="relative">
+              <input type={showKey ? "text" : "password"} value={apiKey}
+                onChange={e => setApiKey(e.target.value)} placeholder="gsk_..."
+                className={INPUT_CLASS + " pr-24 font-mono"} />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                {apiKey && !showKey && <span className="text-gray-600 text-[11px] font-mono hidden sm:inline">{maskKey(apiKey)}</span>}
+                <button onClick={() => setShowKey(v => !v)} className="text-xs text-gray-400 hover:text-white transition-colors font-mono">
+                  {showKey ? "Hide" : "Show"}
+                </button>
+              </div>
             </div>
+            <p className="text-gray-600 text-xs mt-2 font-mono">Stored in localStorage only · transmitted exclusively to api.groq.com</p>
+          </Card>
+
+          {/* Master Objective */}
+          <Card className="p-6">
+            <p className="text-white text-sm font-medium tracking-wide mb-3">Master Objective</p>
+            <textarea value={masterObjective} onChange={e => setMasterObjective(e.target.value)}
+              placeholder="e.g., 'I am building MPD, a private AI website builder. MPD's core function is to automatically wrap all user requests in MACH Enterprise Architecture…'"
+              rows={3} className={INPUT_CLASS + " resize-y leading-relaxed"} />
+          </Card>
+
+          {/* Target Entity + Context */}
+          <Card className="p-6 space-y-4">
+            <div>
+              <p className="text-white text-sm font-medium tracking-wide mb-3">Target Entity</p>
+              <input type="text" value={targetEntity} onChange={e => setTargetEntity(e.target.value)}
+                placeholder="e.g., Fleet Management E-commerce" className={INPUT_CLASS} />
+            </div>
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <p className="text-white text-sm font-medium tracking-wide">Target Context / URL</p>
+                <span className="text-gray-500 text-xs font-mono">~{estTokens} tokens</span>
+              </div>
+              <textarea value={targetContext} onChange={e => setTargetContext(e.target.value)}
+                placeholder="Describe the target architecture or paste a URL…"
+                rows={4} className={INPUT_CLASS + " resize-y leading-relaxed"} />
+            </div>
+          </Card>
+
+          {/* Protocol + Directives + Temperature + Generate */}
+          <Card className="p-6 space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <p className="text-white text-sm font-medium tracking-wide mb-3">Dominance Protocol</p>
+                <select value={protocol} onChange={e => setProtocol(e.target.value)}
+                  className={INPUT_CLASS + " appearance-none cursor-pointer font-mono text-[#2997FF]"}>
+                  {DOMINANCE_PROTOCOLS.map(p => (
+                    <option key={p.id} value={p.id} className="bg-[#1C1C1E]">{p.label}</option>
+                  ))}
+                </select>
+                {selectedProto && <p className="text-gray-500 text-xs mt-1.5 font-mono leading-relaxed">{selectedProto.description}</p>}
+              </div>
+              <div>
+                <p className="text-white text-sm font-medium tracking-wide mb-3">
+                  Custom Directives <span className="text-gray-500 font-normal">(optional)</span>
+                </p>
+                <textarea value={customDirectives} onChange={e => setCustomDirectives(e.target.value)}
+                  placeholder="e.g., 'Use Tailwind v4', 'Avoid Redux'."
+                  rows={3} className={INPUT_CLASS + " resize-y text-xs leading-relaxed"} />
+              </div>
+            </div>
+
+            {/* Creativity slider */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <p className="text-white text-sm font-medium tracking-wide">Creativity</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-400 text-xs font-mono">{temperature.toFixed(1)}</span>
+                  <span className="text-gray-600 text-xs font-mono">→ API temp {(temperature * 1.2).toFixed(2)}</span>
+                </div>
+              </div>
+              <input type="range" min={0.1} max={1.0} step={0.1} value={temperature}
+                onChange={e => setTemperature(parseFloat(e.target.value))}
+                className="w-full h-1 accent-[#2997FF]" />
+              <div className="flex justify-between mt-1.5">
+                <span className="text-gray-600 text-xs font-mono">Precise</span>
+                <span className="text-gray-600 text-xs font-mono">Creative</span>
+              </div>
+            </div>
+
+            {/* Adaptation warning */}
+            <AnimatePresence>
+              {adaptWarning && (
+                <motion.p key="adapt-warn"
+                  initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+                  className="text-xs font-mono text-amber-400/80 bg-amber-400/5 border border-amber-400/15 rounded-xl px-4 py-2">
+                  ⚡ {adaptWarning}
+                </motion.p>
+              )}
+            </AnimatePresence>
+
+            {/* Generate button */}
+            <motion.button onClick={handleGenerate} disabled={!canGenerate}
+              whileTap={{ scale: canGenerate ? 0.98 : 1 }}
+              className={`w-full font-semibold text-sm py-3.5 rounded-xl transition-opacity text-white ${
+                layers.apexDefense ? "bg-[#30D158] hover:opacity-90" :
+                layers.monteCarlo  ? "bg-[#06B6D4] hover:opacity-90" :
+                "bg-[#2997FF] hover:opacity-90"
+              } disabled:opacity-40 disabled:cursor-not-allowed`}>
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Streaming…
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-2">
+                  {buttonLabel}
+                  <KbdHint>⌘G</KbdHint>
+                </span>
+              )}
+            </motion.button>
+
+            {/* Hint when key is missing */}
+            {!apiKey && (
+              <p className="text-center text-gray-600 text-xs font-mono">
+                ↑ Add your Groq API key above to enable generation
+              </p>
+            )}
+          </Card>
+
+          {/* Intelligence Layers */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-gray-400 text-[11px] font-mono uppercase tracking-widest">Intelligence Layers</p>
+              {activeLayers > 0 && (
+                <span className="text-xs font-mono px-2.5 py-1 rounded-full text-[#30D158] border border-[#30D158]/30 bg-[#30D158]/10">
+                  {activeLayers}/{LAYER_CONFIGS.length} active
+                </span>
+              )}
+            </div>
+
+            <Card className="px-6 pb-1">
+              <p className="text-gray-600 text-[10px] font-mono uppercase tracking-widest pt-5 pb-1">Math Foundation</p>
+              {mathLayers.map(cfg => (
+                <LayerRow key={cfg.key} active={layers[cfg.key]}
+                  onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: cfg.key })}
+                  label={cfg.label} sublabel={cfg.sublabel} color={cfg.color} />
+              ))}
+            </Card>
+
+            <Card className="px-6 pb-1">
+              <p className="text-gray-600 text-[10px] font-mono uppercase tracking-widest pt-5 pb-1">Strategy Architecture</p>
+              {strategyLayers.map(cfg => (
+                <LayerRow key={cfg.key} active={layers[cfg.key]}
+                  onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: cfg.key })}
+                  label={cfg.label} sublabel={cfg.sublabel} color={cfg.color} />
+              ))}
+            </Card>
+
+            <Card className="px-6 pb-1">
+              <p className="text-gray-600 text-[10px] font-mono uppercase tracking-widest pt-5 pb-1">Competitive Intelligence</p>
+              {intelligenceLayers.map(cfg => (
+                <LayerRow key={cfg.key} active={layers[cfg.key]}
+                  onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: cfg.key })}
+                  label={cfg.label} sublabel={cfg.sublabel} color={cfg.color} />
+              ))}
+            </Card>
+
+            {/* APEX-DEFENSE */}
+            <motion.div
+              animate={{
+                boxShadow: layers.apexDefense
+                  ? ["0 0 0 0 rgba(48,209,88,0.3)", "0 0 16px 3px rgba(48,209,88,0.15)", "0 0 0 0 rgba(48,209,88,0.3)"]
+                  : "0 0 0 0 rgba(48,209,88,0)",
+              }}
+              transition={layers.apexDefense ? { duration: 2.5, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
+              className={`rounded-2xl border px-6 pb-1 ${BG_CARD} ${layers.apexDefense ? "border-[#30D158]/40" : "border-white/5"}`}
+            >
+              <div className="flex items-center gap-2 pt-5 pb-1">
+                <p className="text-[10px] font-mono uppercase tracking-widest text-[#30D158]/60">Foundational Security Layer</p>
+                {layers.apexDefense && (
+                  <span className="text-[10px] font-mono text-[#30D158] border border-[#30D158]/30 rounded-full px-2 py-0.5">ACTIVE</span>
+                )}
+              </div>
+              <div className="flex items-center justify-between gap-4 py-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold tracking-wide"
+                    style={{ color: layers.apexDefense ? "#30D158" : "#9CA3AF" }}>
+                    {apexLayer.label}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{apexLayer.sublabel}</p>
+                </div>
+                <IosToggle active={layers.apexDefense}
+                  onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "apexDefense" })}
+                  color="#30D158" />
+              </div>
+            </motion.div>
+
+            {/* OMEGA-TOPOLOGY */}
+            <motion.div
+              animate={{
+                boxShadow: layers.omegaTopology
+                  ? [
+                      "0 0 0 1px rgba(139,92,246,0.55), 0 0 14px rgba(139,92,246,0.12)",
+                      "0 0 0 1px rgba(6,182,212,0.55),  0 0 14px rgba(6,182,212,0.12)",
+                      "0 0 0 1px rgba(249,115,22,0.45),  0 0 14px rgba(249,115,22,0.10)",
+                      "0 0 0 1px rgba(139,92,246,0.55), 0 0 14px rgba(139,92,246,0.12)",
+                    ]
+                  : "0 0 0 1px rgba(255,255,255,0.05)",
+              }}
+              transition={layers.omegaTopology
+                ? { duration: 4, repeat: Infinity, ease: "linear" }
+                : { duration: 0.3 }}
+              className={`rounded-2xl px-6 pb-1 ${BG_CARD}`}
+            >
+              <div className="flex items-center gap-2 pt-5 pb-1">
+                <p className="text-[10px] font-mono uppercase tracking-widest"
+                  style={{ color: layers.omegaTopology ? "rgba(139,92,246,0.65)" : "rgba(255,255,255,0.18)" }}>
+                  Singularity-Absolute Architecture
+                </p>
+                {layers.omegaTopology && (
+                  <span className="text-[10px] font-mono rounded-full px-2 py-0.5"
+                    style={{ color: "#8B5CF6", border: "1px solid rgba(139,92,246,0.35)" }}>ACTIVE</span>
+                )}
+              </div>
+              <div className="flex items-center justify-between gap-4 py-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold tracking-wide"
+                    style={{ color: layers.omegaTopology ? "#8B5CF6" : "#9CA3AF" }}>
+                    {omegaTopologyLayer.label}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{omegaTopologyLayer.sublabel}</p>
+                </div>
+                <IosToggle active={layers.omegaTopology}
+                  onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "omegaTopology" })}
+                  color="#8B5CF6" />
+              </div>
+            </motion.div>
+
+            {/* OMEGA-ABSOLUTE */}
+            <motion.div
+              animate={{
+                boxShadow: layers.omegaAbsolute
+                  ? [
+                      "0 0 0 1px rgba(245,158,11,0.7),  0 0 24px rgba(245,158,11,0.18)",
+                      "0 0 0 1px rgba(251,191,36,0.7),  0 0 32px rgba(251,191,36,0.22)",
+                      "0 0 0 1px rgba(217,119,6,0.65),  0 0 20px rgba(217,119,6,0.16)",
+                      "0 0 0 1px rgba(245,158,11,0.7),  0 0 24px rgba(245,158,11,0.18)",
+                    ]
+                  : "0 0 0 1px rgba(255,255,255,0.05)",
+              }}
+              transition={layers.omegaAbsolute
+                ? { duration: 3.5, repeat: Infinity, ease: "easeInOut" }
+                : { duration: 0.3 }}
+              className={`rounded-2xl px-6 pb-1 ${BG_CARD}`}
+            >
+              <div className="flex items-center gap-2 pt-5 pb-1">
+                <p className="text-[10px] font-mono uppercase tracking-widest"
+                  style={{ color: layers.omegaAbsolute ? "rgba(245,158,11,0.7)" : "rgba(255,255,255,0.18)" }}>
+                  Supreme Architectural Directive
+                </p>
+                {layers.omegaAbsolute && (
+                  <span className="text-[10px] font-mono rounded-full px-2 py-0.5"
+                    style={{ color: "#F59E0B", border: "1px solid rgba(245,158,11,0.35)" }}>ACTIVE</span>
+                )}
+              </div>
+              <div className="flex items-center justify-between gap-4 py-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold tracking-wide"
+                    style={{ color: layers.omegaAbsolute ? "#F59E0B" : "#9CA3AF" }}>
+                    {omegaAbsoluteLayer.label}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{omegaAbsoluteLayer.sublabel}</p>
+                </div>
+                <IosToggle active={layers.omegaAbsolute}
+                  onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "omegaAbsolute" })}
+                  color="#F59E0B" />
+              </div>
+            </motion.div>
+
+            {/* OMEGA-SECURITY */}
+            <motion.div
+              animate={{
+                boxShadow: layers.omegaSecurity
+                  ? [
+                      "0 0 0 1px rgba(239,68,68,0.7),   0 0 20px rgba(239,68,68,0.14)",
+                      "0 0 0 1px rgba(220,38,38,0.65),  0 0 28px rgba(220,38,38,0.18)",
+                      "0 0 0 1px rgba(239,68,68,0.7),   0 0 20px rgba(239,68,68,0.14)",
+                    ]
+                  : "0 0 0 1px rgba(255,255,255,0.05)",
+              }}
+              transition={layers.omegaSecurity
+                ? { duration: 2, repeat: Infinity, ease: "easeInOut" }
+                : { duration: 0.3 }}
+              className={`rounded-2xl px-6 pb-1 ${BG_CARD}`}
+            >
+              <div className="flex items-center gap-2 pt-5 pb-1">
+                <p className="text-[10px] font-mono uppercase tracking-widest"
+                  style={{ color: layers.omegaSecurity ? "rgba(239,68,68,0.65)" : "rgba(255,255,255,0.18)" }}>
+                  Cryptographic Oblivion Fortress
+                </p>
+                {layers.omegaSecurity && (
+                  <span className="text-[10px] font-mono rounded-full px-2 py-0.5"
+                    style={{ color: "#EF4444", border: "1px solid rgba(239,68,68,0.35)" }}>ACTIVE</span>
+                )}
+              </div>
+              <div className="flex items-center justify-between gap-4 py-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold tracking-wide"
+                    style={{ color: layers.omegaSecurity ? "#EF4444" : "#9CA3AF" }}>
+                    {omegaSecurityLayer.label}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{omegaSecurityLayer.sublabel}</p>
+                </div>
+                <IosToggle active={layers.omegaSecurity}
+                  onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "omegaSecurity" })}
+                  color="#EF4444" />
+              </div>
+            </motion.div>
+
+            {/* SINGULARITY ENGINE */}
+            <motion.div
+              animate={{
+                boxShadow: layers.singularityEngine
+                  ? [
+                      "0 0 0 1px rgba(124,58,237,0.7),  0 0 18px rgba(124,58,237,0.14)",
+                      "0 0 0 1px rgba(37,99,235,0.65),  0 0 22px rgba(37,99,235,0.14)",
+                      "0 0 0 1px rgba(6,182,212,0.65),  0 0 22px rgba(6,182,212,0.14)",
+                      "0 0 0 1px rgba(16,185,129,0.6),  0 0 18px rgba(16,185,129,0.12)",
+                      "0 0 0 1px rgba(236,72,153,0.65), 0 0 22px rgba(236,72,153,0.14)",
+                      "0 0 0 1px rgba(124,58,237,0.7),  0 0 18px rgba(124,58,237,0.14)",
+                    ]
+                  : "0 0 0 1px rgba(255,255,255,0.05)",
+              }}
+              transition={layers.singularityEngine
+                ? { duration: 6, repeat: Infinity, ease: "linear" }
+                : { duration: 0.3 }}
+              className={`rounded-2xl px-6 pb-1 ${BG_CARD}`}
+            >
+              <div className="flex items-center gap-2 pt-5 pb-1">
+                <p className="text-[10px] font-mono uppercase tracking-widest"
+                  style={{ color: layers.singularityEngine ? "rgba(124,58,237,0.7)" : "rgba(255,255,255,0.18)" }}>
+                  Final Singularity — Supreme Omniscient Command
+                </p>
+                {layers.singularityEngine && (
+                  <span className="text-[10px] font-mono rounded-full px-2 py-0.5"
+                    style={{ color: "#7C3AED", border: "1px solid rgba(124,58,237,0.4)" }}>ACTIVE</span>
+                )}
+              </div>
+              <div className="flex items-center justify-between gap-4 py-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold tracking-wide"
+                    style={{ color: layers.singularityEngine ? "#7C3AED" : "#9CA3AF" }}>
+                    {singularityEngLayer.label}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{singularityEngLayer.sublabel}</p>
+                </div>
+                <IosToggle active={layers.singularityEngine}
+                  onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "singularityEngine" })}
+                  color="#7C3AED" />
+              </div>
+            </motion.div>
+
+            {/* RETRACTOR */}
+            <motion.div
+              animate={{
+                boxShadow: layers.retractor
+                  ? [
+                      "0 0 0 1px rgba(20,184,166,0.7),  0 0 20px rgba(20,184,166,0.14)",
+                      "0 0 0 1px rgba(13,148,136,0.65), 0 0 28px rgba(13,148,136,0.18)",
+                      "0 0 0 1px rgba(5,150,105,0.6),   0 0 22px rgba(5,150,105,0.14)",
+                      "0 0 0 1px rgba(20,184,166,0.7),  0 0 20px rgba(20,184,166,0.14)",
+                    ]
+                  : "0 0 0 1px rgba(255,255,255,0.05)",
+              }}
+              transition={layers.retractor
+                ? { duration: 3, repeat: Infinity, ease: "easeInOut" }
+                : { duration: 0.3 }}
+              className={`rounded-2xl px-6 pb-1 ${BG_CARD}`}
+            >
+              <div className="flex items-center gap-2 pt-5 pb-1">
+                <p className="text-[10px] font-mono uppercase tracking-widest"
+                  style={{ color: layers.retractor ? "rgba(20,184,166,0.7)" : "rgba(255,255,255,0.18)" }}>
+                  Zero-Point Retractor — Friction Yield Extraction
+                </p>
+                {layers.retractor && (
+                  <span className="text-[10px] font-mono rounded-full px-2 py-0.5"
+                    style={{ color: "#14B8A6", border: "1px solid rgba(20,184,166,0.4)" }}>ACTIVE</span>
+                )}
+              </div>
+              <div className="flex items-center justify-between gap-4 py-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold tracking-wide"
+                    style={{ color: layers.retractor ? "#14B8A6" : "#9CA3AF" }}>
+                    {retractorLayer.label}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{retractorLayer.sublabel}</p>
+                </div>
+                <IosToggle active={layers.retractor}
+                  onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "retractor" })}
+                  color="#14B8A6" />
+              </div>
+            </motion.div>
+
+            {/* SIN-EATER */}
+            <motion.div
+              animate={{
+                boxShadow: layers.sinEater
+                  ? [
+                      "0 0 0 1px rgba(192,38,211,0.8),  0 0 22px rgba(192,38,211,0.18)",
+                      "0 0 0 1px rgba(147,51,234,0.7),  0 0 30px rgba(147,51,234,0.22)",
+                      "0 0 0 1px rgba(219,39,119,0.75), 0 0 18px rgba(219,39,119,0.16)",
+                      "0 0 0 1px rgba(192,38,211,0.8),  0 0 22px rgba(192,38,211,0.18)",
+                    ]
+                  : "0 0 0 1px rgba(255,255,255,0.05)",
+              }}
+              transition={layers.sinEater
+                ? { duration: 2.5, repeat: Infinity, ease: "easeInOut" }
+                : { duration: 0.3 }}
+              className={`rounded-2xl px-6 pb-1 ${BG_CARD}`}
+            >
+              <div className="flex items-center gap-2 pt-5 pb-1">
+                <p className="text-[10px] font-mono uppercase tracking-widest"
+                  style={{ color: layers.sinEater ? "rgba(192,38,211,0.75)" : "rgba(255,255,255,0.18)" }}>
+                  Omniscient Sin-Eater — Vice Yield Extraction Engine
+                </p>
+                {layers.sinEater && (
+                  <span className="text-[10px] font-mono rounded-full px-2 py-0.5"
+                    style={{ color: "#C026D3", border: "1px solid rgba(192,38,211,0.4)" }}>ACTIVE</span>
+                )}
+              </div>
+              <div className="flex items-center justify-between gap-4 py-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold tracking-wide"
+                    style={{ color: layers.sinEater ? "#C026D3" : "#9CA3AF" }}>
+                    {sinEaterLayer.label}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{sinEaterLayer.sublabel}</p>
+                </div>
+                <IosToggle active={layers.sinEater}
+                  onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "sinEater" })}
+                  color="#C026D3" />
+              </div>
+            </motion.div>
+
+            {/* ERGODIC-SYNC */}
+            <motion.div
+              animate={{
+                boxShadow: layers.ergodicSync
+                  ? [
+                      "0 0 0 0   rgba(255,255,255,0.12)",
+                      "0 0 18px 3px rgba(255,255,255,0.08)",
+                      "0 0 0 0   rgba(255,255,255,0.12)",
+                    ]
+                  : "0 0 0 0 rgba(255,255,255,0)",
+              }}
+              transition={layers.ergodicSync
+                ? { duration: 2.8, repeat: Infinity, ease: "easeInOut" }
+                : { duration: 0.3 }}
+              className={`rounded-2xl px-6 pb-1 ${BG_CARD} ${layers.ergodicSync ? "border border-white/20" : "border border-white/5"}`}
+            >
+              <div className="flex items-center gap-2 pt-5 pb-1">
+                <p className="text-[10px] font-mono uppercase tracking-widest"
+                  style={{ color: layers.ergodicSync ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.18)" }}>
+                  God-Tier Macro-Temporal Architecture
+                </p>
+                {layers.ergodicSync && (
+                  <span className="text-[10px] font-mono text-white/50 border border-white/20 rounded-full px-2 py-0.5">ACTIVE</span>
+                )}
+              </div>
+              <div className="flex items-center justify-between gap-4 py-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold tracking-wide"
+                    style={{ color: layers.ergodicSync ? "rgba(255,255,255,0.88)" : "#9CA3AF" }}>
+                    {ergodicSyncLayer.label}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{ergodicSyncLayer.sublabel}</p>
+                </div>
+                <IosToggle active={layers.ergodicSync}
+                  onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "ergodicSync" })}
+                  color="rgba(220,220,220,0.9)" />
+              </div>
+            </motion.div>
+
           </div>
 
-          {/* Adaptation warning */}
+          {/* Payload Output */}
           <AnimatePresence>
-            {adaptWarning && (
-              <motion.p key="adapt-warn"
-                initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-                className="text-xs font-mono text-amber-400/80 bg-amber-400/5 border border-amber-400/15 rounded-xl px-4 py-2">
-                ⚡ {adaptWarning}
-              </motion.p>
+            {(payload || isStreaming) && (
+              <motion.div key="payload-viewer"
+                initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3, ease: "easeOut" }}>
+                <PayloadViewer
+                  payload={payload}
+                  tokensUsed={tokensUsed}
+                  durationMs={durationMs}
+                  model={activeModel}
+                  isStreaming={isStreaming}
+                />
+              </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Generate button */}
-          <motion.button onClick={handleGenerate} disabled={!canGenerate}
-            whileTap={{ scale: canGenerate ? 0.98 : 1 }}
-            className={`w-full font-semibold text-sm py-3.5 rounded-xl transition-opacity text-white ${
-              layers.apexDefense ? "bg-[#30D158] hover:opacity-90" :
-              layers.monteCarlo  ? "bg-[#06B6D4] hover:opacity-90" :
-              "bg-[#2997FF] hover:opacity-90"
-            } disabled:opacity-40 disabled:cursor-not-allowed`}>
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Streaming…
-              </span>
-            ) : buttonLabel}
-          </motion.button>
-        </Card>
-
-        {/* Intelligence Layers */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-gray-400 text-[11px] font-mono uppercase tracking-widest">Intelligence Layers</p>
-            {activeLayers > 0 && (
-              <span className="text-xs font-mono px-2.5 py-1 rounded-full text-[#30D158] border border-[#30D158]/30 bg-[#30D158]/10">
-                {activeLayers}/{LAYER_CONFIGS.length} active
-              </span>
-            )}
-          </div>
-
-          <Card className="px-6 pb-1">
-            <p className="text-gray-600 text-[10px] font-mono uppercase tracking-widest pt-5 pb-1">Math Foundation</p>
-            {mathLayers.map(cfg => (
-              <LayerRow key={cfg.key} active={layers[cfg.key]}
-                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: cfg.key })}
-                label={cfg.label} sublabel={cfg.sublabel} color={cfg.color} />
-            ))}
+          {/* Project Vault */}
+          <Card className="overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+              <p className="text-white text-sm font-medium tracking-wide">
+                Project Vault
+                {projects.length > 0 && <span className="text-gray-500 ml-2 font-normal">({projects.length})</span>}
+              </p>
+            </div>
+            <div className="p-6">
+              <div className="flex gap-2">
+                <input type="text" value={projectLabel} onChange={e => setProjectLabel(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") saveProject(); }}
+                  placeholder="Project name (optional)"
+                  className="flex-1 bg-[#0A0A0A] border border-white/10 text-white placeholder:text-gray-500 focus:border-[#2997FF] outline-none transition-all rounded-xl px-4 py-2.5 text-xs font-mono" />
+                <button onClick={saveProject} disabled={!targetEntity.trim()}
+                  className="text-xs font-mono px-4 py-2.5 rounded-xl bg-[#3A3A3C] text-white hover:bg-[#48484A] transition-colors disabled:opacity-40 whitespace-nowrap">
+                  Save Context
+                </button>
+              </div>
+              {projects.length > 0 ? (
+                <div className="mt-4 space-y-2 max-h-52 overflow-y-auto">
+                  {projects.map(p => (
+                    <div key={p.id} className="flex items-center gap-3 bg-[#1C1C1E] rounded-xl px-4 py-3 border border-white/5">
+                      <button onClick={() => loadProject(p)} className="flex-1 text-left min-w-0">
+                        <p className="text-white text-xs font-medium truncate hover:text-[#2997FF] transition-colors">{p.label}</p>
+                        <p className="text-gray-500 text-xs font-mono mt-0.5">{new Date(p.createdAt).toLocaleDateString()} · {p.protocol}</p>
+                      </button>
+                      <button onClick={() => deleteProject(p.id)} className="text-gray-600 hover:text-red-400 transition-colors text-base font-mono shrink-0">×</button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 text-gray-600 text-xs font-mono text-center py-4">
+                  No saved projects. Fill the fields above and click &quot;Save Context&quot;.
+                </p>
+              )}
+            </div>
           </Card>
 
-          <Card className="px-6 pb-1">
-            <p className="text-gray-600 text-[10px] font-mono uppercase tracking-widest pt-5 pb-1">Strategy Architecture</p>
-            {strategyLayers.map(cfg => (
-              <LayerRow key={cfg.key} active={layers[cfg.key]}
-                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: cfg.key })}
-                label={cfg.label} sublabel={cfg.sublabel} color={cfg.color} />
-            ))}
-          </Card>
+          {/* Prompt History */}
+          <PromptHistory entries={history} onLoad={handleLoadHistory} onClear={handleClearHistory} />
 
-          <Card className="px-6 pb-1">
-            <p className="text-gray-600 text-[10px] font-mono uppercase tracking-widest pt-5 pb-1">Competitive Intelligence</p>
-            {intelligenceLayers.map(cfg => (
-              <LayerRow key={cfg.key} active={layers[cfg.key]}
-                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: cfg.key })}
-                label={cfg.label} sublabel={cfg.sublabel} color={cfg.color} />
-            ))}
-          </Card>
-
-          {/* APEX-DEFENSE — pulsing green glow card */}
-          <motion.div
-            animate={{
-              boxShadow: layers.apexDefense
-                ? ["0 0 0 0 rgba(48,209,88,0.3)", "0 0 16px 3px rgba(48,209,88,0.15)", "0 0 0 0 rgba(48,209,88,0.3)"]
-                : "0 0 0 0 rgba(48,209,88,0)",
-            }}
-            transition={layers.apexDefense ? { duration: 2.5, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
-            className={`rounded-2xl border px-6 pb-1 ${BG_CARD} ${layers.apexDefense ? "border-[#30D158]/40" : "border-white/5"}`}
-          >
-            <div className="flex items-center gap-2 pt-5 pb-1">
-              <p className="text-[10px] font-mono uppercase tracking-widest text-[#30D158]/60">Foundational Security Layer</p>
-              {layers.apexDefense && (
-                <span className="text-[10px] font-mono text-[#30D158] border border-[#30D158]/30 rounded-full px-2 py-0.5">ACTIVE</span>
-              )}
-            </div>
-            <div className="flex items-center justify-between gap-4 py-4">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold tracking-wide"
-                  style={{ color: layers.apexDefense ? "#30D158" : "#9CA3AF" }}>
-                  {apexLayer.label}
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{apexLayer.sublabel}</p>
-              </div>
-              <IosToggle active={layers.apexDefense}
-                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "apexDefense" })}
-                color="#30D158" />
-            </div>
-          </motion.div>
-
-          {/* OMEGA-TOPOLOGY — animated gradient border (ethereal metamorphic style) */}
-          <motion.div
-            animate={{
-              boxShadow: layers.omegaTopology
-                ? [
-                    "0 0 0 1px rgba(139,92,246,0.55), 0 0 14px rgba(139,92,246,0.12)",
-                    "0 0 0 1px rgba(6,182,212,0.55),  0 0 14px rgba(6,182,212,0.12)",
-                    "0 0 0 1px rgba(249,115,22,0.45),  0 0 14px rgba(249,115,22,0.10)",
-                    "0 0 0 1px rgba(139,92,246,0.55), 0 0 14px rgba(139,92,246,0.12)",
-                  ]
-                : "0 0 0 1px rgba(255,255,255,0.05)",
-            }}
-            transition={layers.omegaTopology
-              ? { duration: 4, repeat: Infinity, ease: "linear" }
-              : { duration: 0.3 }}
-            className={`rounded-2xl px-6 pb-1 ${BG_CARD}`}
-          >
-            <div className="flex items-center gap-2 pt-5 pb-1">
-              <p className="text-[10px] font-mono uppercase tracking-widest"
-                style={{ color: layers.omegaTopology ? "rgba(139,92,246,0.65)" : "rgba(255,255,255,0.18)" }}>
-                Singularity-Absolute Architecture
-              </p>
-              {layers.omegaTopology && (
-                <span className="text-[10px] font-mono rounded-full px-2 py-0.5"
-                  style={{ color: "#8B5CF6", border: "1px solid rgba(139,92,246,0.35)" }}>ACTIVE</span>
-              )}
-            </div>
-            <div className="flex items-center justify-between gap-4 py-4">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold tracking-wide"
-                  style={{ color: layers.omegaTopology ? "#8B5CF6" : "#9CA3AF" }}>
-                  {omegaTopologyLayer.label}
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{omegaTopologyLayer.sublabel}</p>
-              </div>
-              <IosToggle active={layers.omegaTopology}
-                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "omegaTopology" })}
-                color="#8B5CF6" />
-            </div>
-          </motion.div>
-
-          {/* OMEGA-ABSOLUTE — deep amber/gold overwhelming glow */}
-          <motion.div
-            animate={{
-              boxShadow: layers.omegaAbsolute
-                ? [
-                    "0 0 0 1px rgba(245,158,11,0.7),  0 0 24px rgba(245,158,11,0.18)",
-                    "0 0 0 1px rgba(251,191,36,0.7),  0 0 32px rgba(251,191,36,0.22)",
-                    "0 0 0 1px rgba(217,119,6,0.65),  0 0 20px rgba(217,119,6,0.16)",
-                    "0 0 0 1px rgba(245,158,11,0.7),  0 0 24px rgba(245,158,11,0.18)",
-                  ]
-                : "0 0 0 1px rgba(255,255,255,0.05)",
-            }}
-            transition={layers.omegaAbsolute
-              ? { duration: 3.5, repeat: Infinity, ease: "easeInOut" }
-              : { duration: 0.3 }}
-            className={`rounded-2xl px-6 pb-1 ${BG_CARD}`}
-          >
-            <div className="flex items-center gap-2 pt-5 pb-1">
-              <p className="text-[10px] font-mono uppercase tracking-widest"
-                style={{ color: layers.omegaAbsolute ? "rgba(245,158,11,0.7)" : "rgba(255,255,255,0.18)" }}>
-                Supreme Architectural Directive
-              </p>
-              {layers.omegaAbsolute && (
-                <span className="text-[10px] font-mono rounded-full px-2 py-0.5"
-                  style={{ color: "#F59E0B", border: "1px solid rgba(245,158,11,0.35)" }}>ACTIVE</span>
-              )}
-            </div>
-            <div className="flex items-center justify-between gap-4 py-4">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold tracking-wide"
-                  style={{ color: layers.omegaAbsolute ? "#F59E0B" : "#9CA3AF" }}>
-                  {omegaAbsoluteLayer.label}
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{omegaAbsoluteLayer.sublabel}</p>
-              </div>
-              <IosToggle active={layers.omegaAbsolute}
-                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "omegaAbsolute" })}
-                color="#F59E0B" />
-            </div>
-          </motion.div>
-
-          {/* OMEGA-SECURITY — fortified crimson glow */}
-          <motion.div
-            animate={{
-              boxShadow: layers.omegaSecurity
-                ? [
-                    "0 0 0 1px rgba(239,68,68,0.7),   0 0 20px rgba(239,68,68,0.14)",
-                    "0 0 0 1px rgba(220,38,38,0.65),  0 0 28px rgba(220,38,38,0.18)",
-                    "0 0 0 1px rgba(239,68,68,0.7),   0 0 20px rgba(239,68,68,0.14)",
-                  ]
-                : "0 0 0 1px rgba(255,255,255,0.05)",
-            }}
-            transition={layers.omegaSecurity
-              ? { duration: 2, repeat: Infinity, ease: "easeInOut" }
-              : { duration: 0.3 }}
-            className={`rounded-2xl px-6 pb-1 ${BG_CARD}`}
-          >
-            <div className="flex items-center gap-2 pt-5 pb-1">
-              <p className="text-[10px] font-mono uppercase tracking-widest"
-                style={{ color: layers.omegaSecurity ? "rgba(239,68,68,0.65)" : "rgba(255,255,255,0.18)" }}>
-                Cryptographic Oblivion Fortress
-              </p>
-              {layers.omegaSecurity && (
-                <span className="text-[10px] font-mono rounded-full px-2 py-0.5"
-                  style={{ color: "#EF4444", border: "1px solid rgba(239,68,68,0.35)" }}>ACTIVE</span>
-              )}
-            </div>
-            <div className="flex items-center justify-between gap-4 py-4">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold tracking-wide"
-                  style={{ color: layers.omegaSecurity ? "#EF4444" : "#9CA3AF" }}>
-                  {omegaSecurityLayer.label}
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{omegaSecurityLayer.sublabel}</p>
-              </div>
-              <IosToggle active={layers.omegaSecurity}
-                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "omegaSecurity" })}
-                color="#EF4444" />
-            </div>
-          </motion.div>
-
-          {/* SINGULARITY — transcendent multi-color shifting gradient border */}
-          <motion.div
-            animate={{
-              boxShadow: layers.singularityEngine
-                ? [
-                    "0 0 0 1px rgba(124,58,237,0.7),  0 0 18px rgba(124,58,237,0.14)",
-                    "0 0 0 1px rgba(37,99,235,0.65),  0 0 22px rgba(37,99,235,0.14)",
-                    "0 0 0 1px rgba(6,182,212,0.65),  0 0 22px rgba(6,182,212,0.14)",
-                    "0 0 0 1px rgba(16,185,129,0.6),  0 0 18px rgba(16,185,129,0.12)",
-                    "0 0 0 1px rgba(236,72,153,0.65), 0 0 22px rgba(236,72,153,0.14)",
-                    "0 0 0 1px rgba(124,58,237,0.7),  0 0 18px rgba(124,58,237,0.14)",
-                  ]
-                : "0 0 0 1px rgba(255,255,255,0.05)",
-            }}
-            transition={layers.singularityEngine
-              ? { duration: 6, repeat: Infinity, ease: "linear" }
-              : { duration: 0.3 }}
-            className={`rounded-2xl px-6 pb-1 ${BG_CARD}`}
-          >
-            <div className="flex items-center gap-2 pt-5 pb-1">
-              <p className="text-[10px] font-mono uppercase tracking-widest"
-                style={{ color: layers.singularityEngine ? "rgba(124,58,237,0.7)" : "rgba(255,255,255,0.18)" }}>
-                Final Singularity — Supreme Omniscient Command
-              </p>
-              {layers.singularityEngine && (
-                <span className="text-[10px] font-mono rounded-full px-2 py-0.5"
-                  style={{ color: "#7C3AED", border: "1px solid rgba(124,58,237,0.4)" }}>ACTIVE</span>
-              )}
-            </div>
-            <div className="flex items-center justify-between gap-4 py-4">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold tracking-wide"
-                  style={{ color: layers.singularityEngine ? "#7C3AED" : "#9CA3AF" }}>
-                  {singularityEngLayer.label}
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{singularityEngLayer.sublabel}</p>
-              </div>
-              <IosToggle active={layers.singularityEngine}
-                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "singularityEngine" })}
-                color="#7C3AED" />
-            </div>
-          </motion.div>
-
-          {/* RETRACTOR — fortified teal Safe Zone glow */}
-          <motion.div
-            animate={{
-              boxShadow: layers.retractor
-                ? [
-                    "0 0 0 1px rgba(20,184,166,0.7),  0 0 20px rgba(20,184,166,0.14)",
-                    "0 0 0 1px rgba(13,148,136,0.65), 0 0 28px rgba(13,148,136,0.18)",
-                    "0 0 0 1px rgba(5,150,105,0.6),   0 0 22px rgba(5,150,105,0.14)",
-                    "0 0 0 1px rgba(20,184,166,0.7),  0 0 20px rgba(20,184,166,0.14)",
-                  ]
-                : "0 0 0 1px rgba(255,255,255,0.05)",
-            }}
-            transition={layers.retractor
-              ? { duration: 3, repeat: Infinity, ease: "easeInOut" }
-              : { duration: 0.3 }}
-            className={`rounded-2xl px-6 pb-1 ${BG_CARD}`}
-          >
-            <div className="flex items-center gap-2 pt-5 pb-1">
-              <p className="text-[10px] font-mono uppercase tracking-widest"
-                style={{ color: layers.retractor ? "rgba(20,184,166,0.7)" : "rgba(255,255,255,0.18)" }}>
-                Zero-Point Retractor — Friction Yield Extraction
-              </p>
-              {layers.retractor && (
-                <span className="text-[10px] font-mono rounded-full px-2 py-0.5"
-                  style={{ color: "#14B8A6", border: "1px solid rgba(20,184,166,0.4)" }}>ACTIVE</span>
-              )}
-            </div>
-            <div className="flex items-center justify-between gap-4 py-4">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold tracking-wide"
-                  style={{ color: layers.retractor ? "#14B8A6" : "#9CA3AF" }}>
-                  {retractorLayer.label}
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{retractorLayer.sublabel}</p>
-              </div>
-              <IosToggle active={layers.retractor}
-                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "retractor" })}
-                color="#14B8A6" />
-            </div>
-          </motion.div>
-
-          {/* SIN-EATER — fuchsia malevolence absorption glow */}
-          <motion.div
-            animate={{
-              boxShadow: layers.sinEater
-                ? [
-                    "0 0 0 1px rgba(192,38,211,0.8),  0 0 22px rgba(192,38,211,0.18)",
-                    "0 0 0 1px rgba(147,51,234,0.7),  0 0 30px rgba(147,51,234,0.22)",
-                    "0 0 0 1px rgba(219,39,119,0.75), 0 0 18px rgba(219,39,119,0.16)",
-                    "0 0 0 1px rgba(192,38,211,0.8),  0 0 22px rgba(192,38,211,0.18)",
-                  ]
-                : "0 0 0 1px rgba(255,255,255,0.05)",
-            }}
-            transition={layers.sinEater
-              ? { duration: 2.5, repeat: Infinity, ease: "easeInOut" }
-              : { duration: 0.3 }}
-            className={`rounded-2xl px-6 pb-1 ${BG_CARD}`}
-          >
-            <div className="flex items-center gap-2 pt-5 pb-1">
-              <p className="text-[10px] font-mono uppercase tracking-widest"
-                style={{ color: layers.sinEater ? "rgba(192,38,211,0.75)" : "rgba(255,255,255,0.18)" }}>
-                Omniscient Sin-Eater — Vice Yield Extraction Engine
-              </p>
-              {layers.sinEater && (
-                <span className="text-[10px] font-mono rounded-full px-2 py-0.5"
-                  style={{ color: "#C026D3", border: "1px solid rgba(192,38,211,0.4)" }}>ACTIVE</span>
-              )}
-            </div>
-            <div className="flex items-center justify-between gap-4 py-4">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold tracking-wide"
-                  style={{ color: layers.sinEater ? "#C026D3" : "#9CA3AF" }}>
-                  {sinEaterLayer.label}
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{sinEaterLayer.sublabel}</p>
-              </div>
-              <IosToggle active={layers.sinEater}
-                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "sinEater" })}
-                color="#C026D3" />
-            </div>
-          </motion.div>
-
-          {/* ERGODIC-SYNC — steady pulsing white glow (God-tier authority) */}
-          <motion.div
-            animate={{
-              boxShadow: layers.ergodicSync
-                ? [
-                    "0 0 0 0   rgba(255,255,255,0.12)",
-                    "0 0 18px 3px rgba(255,255,255,0.08)",
-                    "0 0 0 0   rgba(255,255,255,0.12)",
-                  ]
-                : "0 0 0 0 rgba(255,255,255,0)",
-            }}
-            transition={layers.ergodicSync
-              ? { duration: 2.8, repeat: Infinity, ease: "easeInOut" }
-              : { duration: 0.3 }}
-            className={`rounded-2xl px-6 pb-1 ${BG_CARD} ${layers.ergodicSync ? "border border-white/20" : "border border-white/5"}`}
-          >
-            <div className="flex items-center gap-2 pt-5 pb-1">
-              <p className="text-[10px] font-mono uppercase tracking-widest"
-                style={{ color: layers.ergodicSync ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.18)" }}>
-                God-Tier Macro-Temporal Architecture
-              </p>
-              {layers.ergodicSync && (
-                <span className="text-[10px] font-mono text-white/50 border border-white/20 rounded-full px-2 py-0.5">ACTIVE</span>
-              )}
-            </div>
-            <div className="flex items-center justify-between gap-4 py-4">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold tracking-wide"
-                  style={{ color: layers.ergodicSync ? "rgba(255,255,255,0.88)" : "#9CA3AF" }}>
-                  {ergodicSyncLayer.label}
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed font-mono">{ergodicSyncLayer.sublabel}</p>
-              </div>
-              <IosToggle active={layers.ergodicSync}
-                onChange={(_v) => dispatchLayer({ type: "TOGGLE", key: "ergodicSync" })}
-                color="rgba(220,220,220,0.9)" />
-            </div>
-          </motion.div>
+          {/* Footer */}
+          <p className="text-center text-gray-600 text-[11px] font-mono pb-2 select-none">
+            Protected by Adversarial Audit &amp; Temporal Anchoring · Auto-saves every 30s
+          </p>
 
         </div>
-
-        {/* Payload Output */}
-        <AnimatePresence>
-          {payload && (
-            <motion.div key="payload-viewer"
-              initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3, ease: "easeOut" }}>
-              <PayloadViewer payload={payload} tokensUsed={tokensUsed} durationMs={durationMs} model={activeModel} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Project Vault */}
-        <Card className="overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
-            <p className="text-white text-sm font-medium tracking-wide">
-              Project Vault
-              {projects.length > 0 && <span className="text-gray-500 ml-2 font-normal">({projects.length})</span>}
-            </p>
-          </div>
-          <div className="p-6">
-            <div className="flex gap-2">
-              <input type="text" value={projectLabel} onChange={e => setProjectLabel(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") saveProject(); }}
-                placeholder="Project name (optional)"
-                className="flex-1 bg-[#0A0A0A] border border-white/10 text-white placeholder:text-gray-500 focus:border-[#2997FF] outline-none transition-all rounded-xl px-4 py-2.5 text-xs font-mono" />
-              <button onClick={saveProject} disabled={!targetEntity.trim()}
-                className="text-xs font-mono px-4 py-2.5 rounded-xl bg-[#3A3A3C] text-white hover:bg-[#48484A] transition-colors disabled:opacity-40 whitespace-nowrap">
-                Save Context
-              </button>
-            </div>
-            {projects.length > 0 ? (
-              <div className="mt-4 space-y-2 max-h-52 overflow-y-auto">
-                {projects.map(p => (
-                  <div key={p.id} className="flex items-center gap-3 bg-[#1C1C1E] rounded-xl px-4 py-3 border border-white/5">
-                    <button onClick={() => loadProject(p)} className="flex-1 text-left min-w-0">
-                      <p className="text-white text-xs font-medium truncate hover:text-[#2997FF] transition-colors">{p.label}</p>
-                      <p className="text-gray-500 text-xs font-mono mt-0.5">{new Date(p.createdAt).toLocaleDateString()} · {p.protocol}</p>
-                    </button>
-                    <button onClick={() => deleteProject(p.id)} className="text-gray-600 hover:text-red-400 transition-colors text-base font-mono shrink-0">×</button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-4 text-gray-600 text-xs font-mono text-center py-4">
-                No saved projects. Fill the fields above and click &quot;Save Context&quot;.
-              </p>
-            )}
-          </div>
-        </Card>
-
-        {/* Prompt History */}
-        <PromptHistory entries={history} onLoad={handleLoadHistory} onClear={handleClearHistory} />
-
-        {/* Immutable footer — no re-render; static string, no state dependency */}
-        <p className="text-center text-gray-600 text-[11px] font-mono pb-2 select-none">
-          Protected by Adversarial Audit &amp; Temporal Anchoring.
-        </p>
-
       </div>
-    </div>
+    </>
   );
 }

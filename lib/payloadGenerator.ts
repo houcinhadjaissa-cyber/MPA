@@ -667,24 +667,53 @@ export const GROQ_MODELS: { id: string; label: string; speed: string }[] = [
 ];
 
 export const DOMINANCE_PROTOCOLS: { id: string; label: string; description: string }[] = [
-  { id: "REST",      label: "Standard REST (Passive)",      description: "OpenAPI 3.0 versioned contract"                       },
-  { id: "GraphQL",   label: "GraphQL (Query Dominance)",    description: "Forces external systems to conform to our schema"     },
-  { id: "WebSocket", label: "WebSocket (Real-time Stream)", description: "Broadcasts asset health — we become the data source" },
+  { id: "REST",            label: "Standard REST (Passive)",       description: "OpenAPI 3.0 versioned contract — standard CRUD apps, simple APIs"                               },
+  { id: "REST-ACTIVE",     label: "REST (Active) + Webhooks",      description: "REST with webhooks, SSE, and polling — apps needing real-time updates without WebSocket overhead" },
+  { id: "GraphQL",         label: "GraphQL Federation",            description: "Federated schema with Apollo-style resolvers — complex data graphs, multi-service architectures"  },
+  { id: "gRPC",            label: "gRPC Streaming",                description: "Protocol Buffers with bidirectional streaming — high-performance microservices, low-latency systems"},
+  { id: "WebSocket",       label: "WebSocket Full-Duplex",         description: "Persistent bidirectional communication — chat, collaboration, live dashboards, gaming"            },
+  { id: "EVENT-DRIVEN",    label: "Event-Driven (Kafka-style)",    description: "Pub/sub with event sourcing and CQRS — async workflows, audit trails, eventual consistency"       },
+  { id: "EDGE-FIRST",      label: "Edge-First (CDN-native)",       description: "Vercel Edge Functions + KV — ultra-low latency, globally distributed, serverless-first"          },
+  { id: "HYBRID",          label: "Hybrid Orchestrated",           description: "Multi-protocol mesh with API gateway — enterprise systems needing multiple protocols simultaneously"},
 ];
 
-export const INDUSTRY_TEMPLATES: { label: string; entity: string; context: string }[] = [
+export const INDUSTRY_TEMPLATES: { label: string; entity: string; context: string; masterObjective?: string }[] = [
   { label: "Fleet Management", entity: "Fleet Management E-commerce",
+    masterObjective: "Build a real-time fleet tracking and management platform with GPS monitoring, predictive maintenance scheduling, fuel optimization, and SLA-backed service contract management for commercial vehicle operators.",
     context: "A Next.js Shopify storefront selling commercial vehicle parts and extended service contracts: https://example-fleet.com" },
   { label: "Grocery / Fresh Food", entity: "Grocery E-commerce",
+    masterObjective: "Build a fresh food inventory management and delivery platform with expiration tracking, demand forecasting, dynamic pricing, and route optimization for same-day perishable delivery.",
     context: "A standard Shopify grocery store with perishable goods and same-day delivery: https://example-grocery.com" },
   { label: "Medical Device", entity: "Bio-Medical Device Distributor",
+    masterObjective: "Build a medical device compliance and monitoring platform with FDA audit trails, 21 CFR Part 11 compliance, UDI tracking, hospital procurement workflows, and post-market surveillance dashboards.",
     context: "A WooCommerce site selling FDA-regulated Class II medical devices to hospital procurement: https://example-meddevice.com" },
   { label: "Real Estate SaaS", entity: "Commercial Real Estate SaaS",
+    masterObjective: "Build a commercial real estate property management SaaS with tenant portals, lease lifecycle management, AI-powered maintenance request routing, financial reporting, and cap rate optimization analytics.",
     context: "A React + Supabase platform for property managers tracking maintenance and lease lifecycle: https://example-cre.com" },
   { label: "Automotive Parts", entity: "OEM Automotive Parts Marketplace",
+    masterObjective: "Build an automotive parts catalog and supply chain management system with VIN decoder, fitment compatibility engine, real-time inventory across 200+ warehouses, dynamic pricing, and B2B dealer portals.",
     context: "A Vue.js marketplace for OEM and aftermarket parts with VIN-based fitment lookup: https://example-autoparts.com" },
   { label: "Energy / Industrial", entity: "Industrial IoT Asset Platform",
+    masterObjective: "Build an energy monitoring and industrial IoT management platform with real-time sensor telemetry, predictive failure detection using ML anomaly detection, SCADA integration, and regulatory compliance reporting.",
     context: "A Next.js + AWS IoT platform for oil & gas operators monitoring pump-jack uptime: https://example-iot.com" },
+  { label: "FinTech Banking", entity: "Digital Banking Platform",
+    masterObjective: "Build a digital banking platform with KYC/AML compliance workflows, real-time fraud detection, multi-currency wallets, open banking API integration (PSD2/PSD3), and AI-powered financial health scoring.",
+    context: "A neobank platform with full KYC/AML compliance, multi-currency accounts, and open banking APIs: https://example-fintech.com" },
+  { label: "EdTech LMS", entity: "AI-Powered Learning Management System",
+    masterObjective: "Build a learning management system with AI-powered adaptive learning paths, spaced repetition algorithms, real-time collaboration, instructor analytics, SCORM/xAPI compliance, and gamification mechanics.",
+    context: "A Next.js + PostgreSQL LMS platform with adaptive learning paths, video courses, and assessment tools: https://example-edtech.com" },
+  { label: "HealthTech Telemedicine", entity: "Telemedicine & Remote Patient Monitoring",
+    masterObjective: "Build a HIPAA-compliant telemedicine platform with video consultations, remote patient monitoring device integration, AI-powered symptom triage, e-prescription workflows, and clinical outcome tracking.",
+    context: "A HIPAA-compliant telehealth platform with video consultations and RPM device integrations: https://example-telemed.com" },
+  { label: "E-Commerce Marketplace", entity: "Multi-Vendor E-Commerce Marketplace",
+    masterObjective: "Build a multi-vendor marketplace with real-time inventory sync, dynamic pricing engine, seller reputation scoring, AI-powered product recommendations, dispute resolution workflows, and revenue share automation.",
+    context: "A React + Node.js multi-vendor marketplace with real-time inventory and vendor management: https://example-marketplace.com" },
+  { label: "SaaS Analytics", entity: "Real-Time SaaS Analytics Dashboard",
+    masterObjective: "Build a real-time analytics platform with custom metric builders, cohort analysis, funnel visualization, anomaly detection, A/B test significance calculators, and automated insight generation using LLMs.",
+    context: "A Next.js + ClickHouse analytics platform for SaaS companies tracking product usage and revenue metrics: https://example-analytics.com" },
+  { label: "DevOps Platform", entity: "CI/CD Pipeline Management Platform",
+    masterObjective: "Build a CI/CD pipeline management platform with deployment automation, infrastructure-as-code templates, multi-cloud orchestration, real-time log streaming, incident correlation, and DORA metrics dashboards.",
+    context: "A Next.js + Kubernetes platform for managing CI/CD pipelines, deployment automation, and infrastructure observability: https://example-devops.com" },
 ];
 
 export interface LayerConfig {
