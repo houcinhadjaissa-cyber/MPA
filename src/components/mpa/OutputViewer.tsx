@@ -73,20 +73,14 @@ export default function OutputViewer({ payload, tokensUsed, durationMs, model, i
 
   return (
     <div className="flex flex-col h-full bg-[#0a0a0a] overflow-hidden">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#111] shrink-0">
         <div className="flex items-center gap-3 flex-wrap">
           {payload && (
             <>
-              <span className="text-xs font-mono font-bold" style={{ color }}>
-                {label}
-              </span>
+              <span className="text-xs font-mono font-bold" style={{ color }}>{label}</span>
               <div className="flex items-center gap-1.5">
                 <div className="h-1.5 w-20 bg-[#222] rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{ width: `${score}%`, backgroundColor: color }}
-                  />
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${score}%`, backgroundColor: color }} />
                 </div>
                 <span className="text-gray-600 text-[10px] font-mono">{score}%</span>
               </div>
@@ -122,7 +116,6 @@ export default function OutputViewer({ payload, tokensUsed, durationMs, model, i
         </div>
       </div>
 
-      {/* Stats bar */}
       {payload && (
         <div className="flex items-center gap-4 px-4 py-2 border-b border-white/5 bg-[#0d0d0d] shrink-0 flex-wrap">
           <span className="text-gray-600 text-[10px] font-mono">{wordCount.toLocaleString()} words</span>
@@ -132,7 +125,6 @@ export default function OutputViewer({ payload, tokensUsed, durationMs, model, i
         </div>
       )}
 
-      {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
         <pre className="text-gray-300 text-xs font-mono leading-relaxed whitespace-pre-wrap break-words select-text">
           {payload}

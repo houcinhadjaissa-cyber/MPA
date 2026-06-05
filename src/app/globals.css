@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 * {
   box-sizing: border-box;
@@ -16,7 +14,7 @@ body {
   color: white;
 }
 
-/* Prose styles for ReactMarkdown in dark mode */
+/* Prose styles for ReactMarkdown */
 .prose-invert h1,
 .prose-invert h2,
 .prose-invert h3,
@@ -82,36 +80,10 @@ body {
 }
 
 /* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.1);
-  border-radius: 2px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,255,255,0.2);
-}
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 
 /* Mobile input reset */
-textarea, input {
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-/* Apex glow animation (kept for compatibility) */
-@keyframes apex-pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(48,209,88,0.4), 0 0 6px rgba(48,209,88,0.2);
-  }
-  50% {
-    box-shadow: 0 0 0 3px rgba(48,209,88,0), 0 0 18px rgba(48,209,88,0.35);
-  }
-}
-.apex-glow {
-  animation: apex-pulse 2.5s ease-in-out infinite;
-}
+textarea, input { -webkit-appearance: none; appearance: none; }

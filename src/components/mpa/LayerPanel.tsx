@@ -8,12 +8,12 @@ interface LayerPanelProps {
 }
 
 const GROUPS = [
-  { label: "Math Foundation",         keys: ["mathDominance", "singularityIntelligence"] },
-  { label: "Strategy Architecture",   keys: ["monteCarlo", "zkVerification"] },
-  { label: "Competitive Intelligence",keys: ["fractalEconomy", "regenerativeSovereignty", "omniNode", "mediaOracle", "reverseEngineering"] },
-  { label: "Foundational Security",   keys: ["apexDefense"] },
-  { label: "Supreme Architecture",    keys: ["omegaTopology", "omegaSecurity", "omegaAbsolute", "ergodicSync"] },
-  { label: "Singularity Engine",      keys: ["singularityEngine", "retractor", "sinEater"] },
+  { label: "Math Foundation",          keys: ["mathDominance", "singularityIntelligence"] },
+  { label: "Strategy Architecture",    keys: ["monteCarlo", "zkVerification"] },
+  { label: "Competitive Intelligence", keys: ["fractalEconomy", "regenerativeSovereignty", "omniNode", "mediaOracle", "reverseEngineering"] },
+  { label: "Foundational Security",    keys: ["apexDefense"] },
+  { label: "Supreme Architecture",     keys: ["omegaTopology", "omegaSecurity", "omegaAbsolute", "ergodicSync"] },
+  { label: "Singularity Engine",       keys: ["singularityEngine", "retractor", "sinEater"] },
 ];
 
 export default function LayerPanel({ layers, onToggle }: LayerPanelProps) {

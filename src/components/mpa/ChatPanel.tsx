@@ -19,12 +19,7 @@ interface ChatPanelProps {
   onMessagesChange?: (messages: ChatMessage[]) => void;
 }
 
-export default function ChatPanel({
-  onSendMessage,
-  isLoading,
-  initialMessages,
-  onMessagesChange,
-}: ChatPanelProps) {
+export default function ChatPanel({ onSendMessage, isLoading, initialMessages, onMessagesChange }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(() => initialMessages || []);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -93,13 +88,9 @@ export default function ChatPanel({
         document.body.appendChild(ta);
         ta.focus();
         ta.select();
-        ta.setSelectionRange(0, ta.value.length);
         document.execCommand("copy");
         document.body.removeChild(ta);
-      } catch {
-        alert("Long-press to copy manually.");
-        return;
-      }
+      } catch { return; }
     }
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, copied: true } : m)));
     setTimeout(() => {
@@ -117,43 +108,25 @@ export default function ChatPanel({
     URL.revokeObjectURL(url);
   };
 
-  const clearChat = () => {
-    setMessages([]);
-    setError(null);
-  };
-
   return (
     <div className="flex flex-col h-full bg-[#0a0a0a] overflow-hidden">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#111] shrink-0">
         <div className="flex items-center gap-2">
-          <span
-            className={`w-2 h-2 rounded-full shrink-0 ${
-              isLoading ? "bg-amber-400 animate-pulse" : "bg-emerald-400"
-            }`}
-          />
-          <span className="text-emerald-400 font-bold text-sm tracking-wider font-mono">
-            MPA Prompt Studio
-          </span>
+          <span className={`w-2 h-2 rounded-full shrink-0 ${isLoading ? "bg-amber-400 animate-pulse" : "bg-emerald-400"}`} />
+          <span className="text-emerald-400 font-bold text-sm tracking-wider font-mono">MPA Prompt Studio</span>
           {messages.filter((m) => m.role === "assistant").length > 0 && (
             <span className="text-gray-600 text-xs font-mono ml-1">
-              {messages.filter((m) => m.role === "assistant").length} prompt
-              {messages.filter((m) => m.role === "assistant").length !== 1 ? "s" : ""}
+              {messages.filter((m) => m.role === "assistant").length} prompt{messages.filter((m) => m.role === "assistant").length !== 1 ? "s" : ""}
             </span>
           )}
         </div>
         {messages.length > 0 && (
-          <button
-            onClick={clearChat}
-            className="text-gray-600 hover:text-red-400 transition-colors p-1"
-            title="Clear chat"
-          >
+          <button onClick={() => { setMessages([]); setError(null); }} className="text-gray-600 hover:text-red-400 transition-colors p-1" title="Clear chat">
             <Trash2 size={14} />
           </button>
         )}
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && !isLoading && !error && (
           <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-8">
@@ -161,45 +134,31 @@ export default function ChatPanel({
               <Bot size={20} />
             </div>
             <p className="text-gray-500 text-sm">
-              Type a message or click{" "}
-              <strong className="text-emerald-400">Generate</strong> to create a prompt
+              Type a message or click <strong className="text-emerald-400">Generate</strong> to create a prompt
             </p>
             <p className="text-gray-700 text-xs">Follow-up messages refine your output</p>
           </div>
         )}
 
         {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
-          >
+          <div key={msg.id} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
             <div className="flex items-center gap-2 mb-1">
-              {msg.role === "assistant" ? (
-                <Bot size={11} className="text-emerald-500" />
-              ) : (
-                <User size={11} className="text-cyan-500" />
-              )}
+              {msg.role === "assistant" ? <Bot size={11} className="text-emerald-500" /> : <User size={11} className="text-cyan-500" />}
               <span className="text-[10px] font-mono uppercase tracking-wider text-gray-600">
                 {msg.role === "user" ? "You" : "MPA Architect"}
               </span>
             </div>
-
-            <div
-              className={`max-w-[90%] rounded-xl px-4 py-3 text-sm leading-relaxed break-words ${
-                msg.role === "user"
-                  ? "bg-emerald-950/30 border border-emerald-500/20 text-gray-200 whitespace-pre-wrap"
-                  : "bg-[#141414] border border-white/5 text-gray-300"
-              }`}
-            >
+            <div className={`max-w-[90%] rounded-xl px-4 py-3 text-sm leading-relaxed break-words ${
+              msg.role === "user"
+                ? "bg-emerald-950/30 border border-emerald-500/20 text-gray-200 whitespace-pre-wrap"
+                : "bg-[#141414] border border-white/5 text-gray-300"
+            }`}>
               {msg.role === "assistant" ? (
                 <div className="prose prose-invert prose-sm max-w-none">
                   <ReactMarkdown>{msg.content}</ReactMarkdown>
                 </div>
-              ) : (
-                msg.content
-              )}
+              ) : msg.content}
             </div>
-
             {msg.role === "assistant" && (
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <button
@@ -245,7 +204,6 @@ export default function ChatPanel({
         <div ref={chatEndRef} />
       </div>
 
-      {/* Input */}
       <div className="px-3 py-3 border-t border-white/10 bg-[#111] shrink-0">
         <div className="flex items-end gap-2">
           <textarea
@@ -267,11 +225,7 @@ export default function ChatPanel({
                 : "bg-emerald-500 text-black hover:bg-emerald-400"
             }`}
           >
-            {isLoading ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Send size={16} />
-            )}
+            {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
           </button>
         </div>
       </div>

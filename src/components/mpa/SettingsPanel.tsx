@@ -29,8 +29,7 @@ interface SettingsPanelProps {
   canGenerate: boolean;
 }
 
-const INPUT =
-  "w-full bg-[#0a0a0a] border border-white/10 text-white placeholder:text-gray-600 focus:border-emerald-500/40 outline-none transition-all rounded-xl px-3 py-2.5 text-xs font-mono";
+const INPUT = "w-full bg-[#0a0a0a] border border-white/10 text-white placeholder:text-gray-600 focus:border-emerald-500/40 outline-none transition-all rounded-xl px-3 py-2.5 text-xs font-mono";
 
 export default function SettingsPanel({
   apiKey, setApiKey, apiProvider, setApiProvider, model, setModel,
@@ -44,21 +43,17 @@ export default function SettingsPanel({
 
   return (
     <div className="space-y-4">
-
       {/* AI Provider */}
       <div className="bg-[#111] rounded-xl border border-white/5 p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Zap size={12} className="text-emerald-400" />
           <p className="text-white text-xs font-medium">AI Provider</p>
         </div>
-
         <div className="flex gap-1 p-1 bg-[#0a0a0a] rounded-lg">
           <button
             onClick={() => { setApiProvider("groq"); setModel("llama3-70b-8192"); }}
             className={`flex-1 text-xs font-mono px-3 py-2 rounded-lg transition-all ${
-              apiProvider === "groq"
-                ? "bg-cyan-500/20 text-cyan-400"
-                : "text-gray-500 hover:text-white"
+              apiProvider === "groq" ? "bg-cyan-500/20 text-cyan-400" : "text-gray-500 hover:text-white"
             }`}
           >
             Groq (Free)
@@ -66,24 +61,18 @@ export default function SettingsPanel({
           <button
             onClick={() => { setApiProvider("openai"); setModel("gpt-4o-mini"); }}
             className={`flex-1 text-xs font-mono px-3 py-2 rounded-lg transition-all ${
-              apiProvider === "openai"
-                ? "bg-emerald-500/20 text-emerald-400"
-                : "text-gray-500 hover:text-white"
+              apiProvider === "openai" ? "bg-emerald-500/20 text-emerald-400" : "text-gray-500 hover:text-white"
             }`}
           >
             OpenAI
           </button>
         </div>
-
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <p className="text-gray-400 text-[10px] font-mono uppercase tracking-widest">
               {apiProvider === "groq" ? "Groq API Key" : "OpenAI API Key"}
             </p>
-            <button
-              onClick={() => setShowKey(!showKey)}
-              className="text-gray-500 hover:text-white transition-colors"
-            >
+            <button onClick={() => setShowKey(!showKey)} className="text-gray-500 hover:text-white transition-colors">
               {showKey ? <EyeOff size={12} /> : <Eye size={12} />}
             </button>
           </div>
@@ -128,69 +117,37 @@ export default function SettingsPanel({
       {/* Target Config */}
       <div className="bg-[#111] rounded-xl border border-white/5 p-4 space-y-3">
         <p className="text-gray-400 text-[10px] font-mono uppercase tracking-widest">Target Configuration</p>
-
         <div>
           <p className="text-gray-500 text-[10px] font-mono mb-1.5">Master Objective</p>
-          <textarea
-            value={masterObjective}
-            onChange={(e) => setMasterObjective(e.target.value)}
+          <textarea value={masterObjective} onChange={(e) => setMasterObjective(e.target.value)}
             placeholder="High-level goal for the system you want to build..."
-            className={INPUT}
-            rows={2}
-            style={{ resize: "none" }}
-          />
+            className={INPUT} rows={2} style={{ resize: "none" }} />
         </div>
-
         <div>
-          <p className="text-gray-500 text-[10px] font-mono mb-1.5">
-            Target Entity <span className="text-red-400">*</span>
-          </p>
-          <input
-            type="text"
-            value={targetEntity}
-            onChange={(e) => setTargetEntity(e.target.value)}
-            placeholder="e.g. Fleet Management E-commerce"
-            className={INPUT}
-          />
+          <p className="text-gray-500 text-[10px] font-mono mb-1.5">Target Entity <span className="text-red-400">*</span></p>
+          <input type="text" value={targetEntity} onChange={(e) => setTargetEntity(e.target.value)}
+            placeholder="e.g. Fleet Management E-commerce" className={INPUT} />
         </div>
-
         <div>
-          <p className="text-gray-500 text-[10px] font-mono mb-1.5">
-            Target Context / URL <span className="text-red-400">*</span>
-          </p>
-          <textarea
-            value={targetContext}
-            onChange={(e) => setTargetContext(e.target.value)}
+          <p className="text-gray-500 text-[10px] font-mono mb-1.5">Target Context / URL <span className="text-red-400">*</span></p>
+          <textarea value={targetContext} onChange={(e) => setTargetContext(e.target.value)}
             placeholder="e.g. A Next.js + Shopify storefront selling commercial vehicle parts..."
-            className={INPUT}
-            rows={2}
-            style={{ resize: "none" }}
-          />
+            className={INPUT} rows={2} style={{ resize: "none" }} />
         </div>
-
         <div>
           <p className="text-gray-500 text-[10px] font-mono mb-1.5">Custom Directives</p>
-          <textarea
-            value={customDirectives}
-            onChange={(e) => setCustomDirectives(e.target.value)}
+          <textarea value={customDirectives} onChange={(e) => setCustomDirectives(e.target.value)}
             placeholder="Additional instructions for the AI..."
-            className={INPUT}
-            rows={2}
-            style={{ resize: "none" }}
-          />
+            className={INPUT} rows={2} style={{ resize: "none" }} />
         </div>
       </div>
 
       {/* Protocol */}
       <div className="bg-[#111] rounded-xl border border-white/5 p-4">
-        <p className="text-gray-400 text-[10px] font-mono uppercase tracking-widest mb-2">
-          Dominance Protocol
-        </p>
+        <p className="text-gray-400 text-[10px] font-mono uppercase tracking-widest mb-2">Dominance Protocol</p>
         <div className="flex gap-1 flex-wrap mb-2">
           {DOMINANCE_PROTOCOLS.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setProtocol(p.id)}
+            <button key={p.id} onClick={() => setProtocol(p.id)}
               className={`text-[10px] font-mono px-2.5 py-1.5 rounded-lg transition-all ${
                 protocol === p.id
                   ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
@@ -201,9 +158,7 @@ export default function SettingsPanel({
             </button>
           ))}
         </div>
-        {selectedProto && (
-          <p className="text-gray-700 text-[10px] font-mono">{selectedProto.description}</p>
-        )}
+        {selectedProto && <p className="text-gray-700 text-[10px] font-mono">{selectedProto.description}</p>}
       </div>
 
       {/* Creativity */}
@@ -215,15 +170,9 @@ export default function SettingsPanel({
           </div>
           <span className="text-gray-400 text-xs font-mono">{temperature.toFixed(1)}</span>
         </div>
-        <input
-          type="range"
-          min={0.1}
-          max={1.0}
-          step={0.1}
-          value={temperature}
+        <input type="range" min={0.1} max={1.0} step={0.1} value={temperature}
           onChange={(e) => setTemperature(parseFloat(e.target.value))}
-          className="w-full h-1 accent-emerald-500"
-        />
+          className="w-full h-1 accent-emerald-500" />
         <div className="flex justify-between mt-1.5">
           <span className="text-gray-600 text-[10px] font-mono">Precise</span>
           <span className="text-gray-600 text-[10px] font-mono">Creative</span>
@@ -245,9 +194,7 @@ export default function SettingsPanel({
             <span className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
             Generating…
           </span>
-        ) : (
-          "Generate MACH Enterprise Prompt"
-        )}
+        ) : "Generate MACH Enterprise Prompt"}
       </button>
 
       {!apiKey && (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Save, FolderOpen, Trash2 } from "lucide-react";
+import { Save, Trash2 } from "lucide-react";
 
 export interface SavedProject {
   id: string;
@@ -59,10 +59,7 @@ export default function ProjectVault({ projects, onSave, onLoad, onDelete, curre
                 key={p.id}
                 className="flex items-center gap-2 p-2 rounded-lg bg-[#0a0a0a] border border-white/5 hover:border-white/10 transition-colors"
               >
-                <button
-                  onClick={() => onLoad(p)}
-                  className="flex-1 text-left min-w-0"
-                >
+                <button onClick={() => onLoad(p)} className="flex-1 text-left min-w-0">
                   <p className="text-white text-xs font-medium truncate hover:text-emerald-400 transition-colors">
                     {p.label}
                   </p>
@@ -80,9 +77,7 @@ export default function ProjectVault({ projects, onSave, onLoad, onDelete, curre
             ))}
           </div>
         ) : (
-          <p className="text-gray-700 text-[10px] font-mono text-center py-2">
-            No saved projects yet
-          </p>
+          <p className="text-gray-700 text-[10px] font-mono text-center py-2">No saved projects yet</p>
         )}
       </div>
     </div>

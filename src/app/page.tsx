@@ -18,7 +18,7 @@ import { lsGet, lsSet, lsGetJSON, lsSetJSON, LS_KEYS } from "@/lib/mpa/storage";
 
 type IslandMode = "idle" | "generating" | "success" | "error";
 
-export default function Dashboard() {
+export default function MPATerminal() {
   // ── API / Model ───────────────────────────────────────────────────────────
   const [apiKey, setApiKey] = useState("");
   const [apiProvider, setApiProvider] = useState<"groq" | "openai">("groq");
@@ -86,6 +86,19 @@ export default function Dashboard() {
   useEffect(() => { if (hydrated) lsSetJSON(LS_KEYS.CHAT_HISTORY, chatMessages); }, [hydrated, chatMessages]);
   useEffect(() => { if (hydrated) lsSetJSON(LS_KEYS.PROJECTS, projects); }, [hydrated, projects]);
 
+  // ── Cleanup ───────────────────────────────────────────────────────────────
+  useEffect(() => () => { if (successTimerRef.current) clearTimeout(successTimerRef.current); }, []);
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const setIsland = useCallback((mode: IslandMode, msg = "", delay = 4000) => {
+    setIslandMode(mode);
+    if (msg) setIslandError(msg);
+    if (mode !== "generating") {
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => setIslandMode("idle"), delay);
+    }
+  }, []);
+
   // ── Layer toggle ──────────────────────────────────────────────────────────
   const toggleLayer = useCallback((key: LayerKey) => {
     setLayers((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -105,12 +118,7 @@ export default function Dashboard() {
   const callAI = useCallback(
     async (userMessage: string, history: ChatMessage[]): Promise<{ message: string; tokens?: number }> => {
       const systemPrompt = buildSystemPrompt({
-        masterObjective,
-        targetEntity,
-        targetContext,
-        protocol,
-        customDirectives,
-        layers,
+        masterObjective, targetEntity, targetContext, protocol, customDirectives, layers,
       });
 
       const endpoint = apiProvider === "openai" ? "/api/chat" : "/api/groq";
@@ -124,19 +132,14 @@ export default function Dashboard() {
                   .map((m) => ({ role: m.role, content: m.content })),
                 { role: "user", content: userMessage },
               ],
-              systemPrompt,
-              model,
-              temperature,
+              systemPrompt, model, temperature,
             }
           : {
-              apiKey,
-              message: userMessage,
-              systemPrompt,
+              apiKey, message: userMessage, systemPrompt,
               history: history
                 .filter((m) => m.role === "user" || m.role === "assistant")
                 .map((m) => ({ role: m.role, content: m.content })),
-              model,
-              temperature,
+              model, temperature,
             };
 
       const res = await fetch(endpoint, {
@@ -146,11 +149,7 @@ export default function Dashboard() {
       });
 
       const data = await res.json();
-
-      if (!res.ok || data.error) {
-        throw new Error(data.error || "Request failed");
-      }
-
+      if (!res.ok || data.error) throw new Error(data.error || "Request failed");
       return { message: data.message, tokens: data.tokensUsed };
     },
     [apiKey, apiProvider, model, temperature, masterObjective, targetEntity, targetContext, protocol, customDirectives, layers]
@@ -159,19 +158,12 @@ export default function Dashboard() {
   // ── Generate (button) ────────────────────────────────────────────────────
   const handleGenerate = useCallback(async () => {
     if (isLoading) return;
-
     if (!apiKey.trim()) {
-      setIslandMode("error");
-      setIslandError("API key required — enter it in Settings");
-      if (successTimerRef.current) clearTimeout(successTimerRef.current);
-      successTimerRef.current = setTimeout(() => setIslandMode("idle"), 3500);
+      setIsland("error", "API key required — enter it in Settings");
       return;
     }
     if (!targetEntity.trim() || !targetContext.trim()) {
-      setIslandMode("error");
-      setIslandError("Target Entity and Context are required");
-      if (successTimerRef.current) clearTimeout(successTimerRef.current);
-      successTimerRef.current = setTimeout(() => setIslandMode("idle"), 3500);
+      setIsland("error", "Target Entity and Context are required");
       return;
     }
 
@@ -182,7 +174,6 @@ export default function Dashboard() {
     setDurationMs(undefined);
 
     const t0 = Date.now();
-
     try {
       const userMessage =
         masterObjective.trim() ||
@@ -196,79 +187,48 @@ export default function Dashboard() {
       setUsedModel(model);
       if (tokens) setTokensUsed(tokens);
 
-      const userMsg: ChatMessage = {
-        id: `${Date.now()}-u`,
-        role: "user",
-        content: userMessage,
-        timestamp: Date.now(),
-      };
-      const assistantMsg: ChatMessage = {
-        id: `${Date.now()}-a`,
-        role: "assistant",
-        content: reply,
-        timestamp: Date.now(),
-      };
-      setChatMessages((prev) => [...prev, userMsg, assistantMsg]);
+      const userMsg: ChatMessage = { id: `${Date.now()}-u`, role: "user", content: userMessage, timestamp: Date.now() };
+      const asstMsg: ChatMessage = { id: `${Date.now()}-a`, role: "assistant", content: reply, timestamp: Date.now() };
+      setChatMessages((prev) => [...prev, userMsg, asstMsg]);
 
-      setIslandMode("success");
-      if (successTimerRef.current) clearTimeout(successTimerRef.current);
-      successTimerRef.current = setTimeout(() => setIslandMode("idle"), 3000);
+      setIsland("success", "", 3000);
       setMobileTab("output");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Generation failed";
-      setIslandMode("error");
-      setIslandError(msg);
-      if (successTimerRef.current) clearTimeout(successTimerRef.current);
-      successTimerRef.current = setTimeout(() => setIslandMode("idle"), 5000);
+      setIsland("error", err instanceof Error ? err.message : "Generation failed", 5000);
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, apiKey, targetEntity, targetContext, masterObjective, callAI, model, chatMessages]);
+  }, [isLoading, apiKey, targetEntity, targetContext, masterObjective, callAI, model, chatMessages, setIsland]);
 
-  // ── Chat: send message ────────────────────────────────────────────────────
+  // ── Chat send ─────────────────────────────────────────────────────────────
   const handleChatSend = useCallback(
     async (message: string): Promise<string | null> => {
       setIsLoading(true);
       setIslandMode("generating");
       try {
         const { message: reply, tokens } = await callAI(message, chatMessages);
-        setIslandMode("success");
-        if (successTimerRef.current) clearTimeout(successTimerRef.current);
-        successTimerRef.current = setTimeout(() => setIslandMode("idle"), 3000);
+        setIsland("success", "", 3000);
         setPayload(reply);
         setUsedModel(model);
         if (tokens) setTokensUsed(tokens);
         return reply;
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Chat failed";
-        setIslandMode("error");
-        setIslandError(msg);
-        if (successTimerRef.current) clearTimeout(successTimerRef.current);
-        successTimerRef.current = setTimeout(() => setIslandMode("idle"), 5000);
+        setIsland("error", err instanceof Error ? err.message : "Chat failed", 5000);
         return null;
       } finally {
         setIsLoading(false);
       }
     },
-    [callAI, model, chatMessages]
+    [callAI, model, chatMessages, setIsland]
   );
 
   // ── Project Vault ─────────────────────────────────────────────────────────
-  const handleSaveProject = useCallback(
-    (label: string) => {
-      const project: SavedProject = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        label: label || targetEntity,
-        entity: targetEntity,
-        context: targetContext,
-        masterObjective,
-        protocol,
-        createdAt: Date.now(),
-      };
-      setProjects((prev) => [project, ...prev].slice(0, 20));
-    },
-    [targetEntity, targetContext, masterObjective, protocol]
-  );
+  const handleSaveProject = useCallback((label: string) => {
+    setProjects((prev) => [
+      { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, label: label || targetEntity, entity: targetEntity, context: targetContext, masterObjective, protocol, createdAt: Date.now() },
+      ...prev,
+    ].slice(0, 20));
+  }, [targetEntity, targetContext, masterObjective, protocol]);
 
   const handleLoadProject = useCallback((p: SavedProject) => {
     setTargetEntity(p.entity);
@@ -282,15 +242,6 @@ export default function Dashboard() {
     setProjects((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
-  // ── Cleanup ───────────────────────────────────────────────────────────────
-  useEffect(() => {
-    return () => {
-      if (successTimerRef.current) clearTimeout(successTimerRef.current);
-    };
-  }, []);
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Sidebar content (Settings + Templates + Layers + Vault)
   // ─────────────────────────────────────────────────────────────────────────
   const canGenerate = !!(apiKey.trim() && targetEntity.trim() && targetContext.trim());
 
@@ -298,16 +249,16 @@ export default function Dashboard() {
     <div className="space-y-6 pb-8">
       <TemplateSelector onSelect={handleTemplateSelect} />
       <SettingsPanel
-        apiKey={apiKey}                         setApiKey={setApiKey}
-        apiProvider={apiProvider}               setApiProvider={setApiProvider}
-        model={model}                           setModel={setModel}
-        masterObjective={masterObjective}       setMasterObjective={setMasterObjective}
-        targetEntity={targetEntity}             setTargetEntity={setTargetEntity}
-        targetContext={targetContext}            setTargetContext={setTargetContext}
-        protocol={protocol}                     setProtocol={setProtocol}
-        customDirectives={customDirectives}     setCustomDirectives={setCustomDirectives}
-        temperature={temperature}               setTemperature={setTemperature}
-        showKey={showKey}                       setShowKey={setShowKey}
+        apiKey={apiKey}                     setApiKey={setApiKey}
+        apiProvider={apiProvider}           setApiProvider={setApiProvider}
+        model={model}                       setModel={setModel}
+        masterObjective={masterObjective}   setMasterObjective={setMasterObjective}
+        targetEntity={targetEntity}         setTargetEntity={setTargetEntity}
+        targetContext={targetContext}        setTargetContext={setTargetContext}
+        protocol={protocol}                 setProtocol={setProtocol}
+        customDirectives={customDirectives} setCustomDirectives={setCustomDirectives}
+        temperature={temperature}           setTemperature={setTemperature}
+        showKey={showKey}                   setShowKey={setShowKey}
         onGenerate={handleGenerate}
         isLoading={isLoading}
         canGenerate={canGenerate}
@@ -324,12 +275,10 @@ export default function Dashboard() {
   );
 
   // ─────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-screen bg-[#0a0a0a] overflow-hidden">
 
-      {/* ── Top Bar ─────────────────────────────────────────────────────── */}
+      {/* Top Bar */}
       <header className="flex items-center justify-between px-4 py-2 border-b border-white/10 bg-[#0d0d0d] shrink-0 z-10">
         <div className="flex items-center gap-3">
           <button
@@ -342,9 +291,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2">
             <Zap size={14} className="text-emerald-400" />
             <span className="text-white font-bold text-sm tracking-wider font-mono">MPA</span>
-            <span className="text-gray-600 text-xs font-mono hidden sm:inline">
-              Master Plan Architect
-            </span>
+            <span className="text-gray-600 text-xs font-mono hidden sm:inline">Master Plan Architect</span>
           </div>
         </div>
 
@@ -353,7 +300,7 @@ export default function Dashboard() {
         <div className="w-20 md:w-24" />
       </header>
 
-      {/* ── Main Layout ─────────────────────────────────────────────────── */}
+      {/* Main Layout */}
       <div className="flex flex-1 overflow-hidden">
 
         {/* Desktop Sidebar */}
@@ -375,12 +322,7 @@ export default function Dashboard() {
 
         {/* Desktop Right: Output */}
         <section className="hidden md:flex flex-col w-[42%] max-w-2xl overflow-hidden">
-          <OutputViewer
-            payload={payload}
-            tokensUsed={tokensUsed}
-            durationMs={durationMs}
-            model={usedModel}
-          />
+          <OutputViewer payload={payload} tokensUsed={tokensUsed} durationMs={durationMs} model={usedModel} />
         </section>
 
         {/* Mobile: Tabbed Content */}
@@ -405,25 +347,15 @@ export default function Dashboard() {
           )}
           {mobileTab === "output" && (
             <div className="flex-1 overflow-hidden">
-              <OutputViewer
-                payload={payload}
-                tokensUsed={tokensUsed}
-                durationMs={durationMs}
-                model={usedModel}
-              />
+              <OutputViewer payload={payload} tokensUsed={tokensUsed} durationMs={durationMs} model={usedModel} />
             </div>
           )}
         </div>
-
       </div>
 
-      {/* ── Mobile Bottom Nav ────────────────────────────────────────────── */}
+      {/* Mobile Bottom Nav */}
       <div className="md:hidden shrink-0">
-        <MobileNav
-          activeTab={mobileTab}
-          onTabChange={setMobileTab}
-          hasOutput={!!payload}
-        />
+        <MobileNav activeTab={mobileTab} onTabChange={setMobileTab} hasOutput={!!payload} />
       </div>
     </div>
   );
