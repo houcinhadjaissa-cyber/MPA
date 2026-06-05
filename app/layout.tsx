@@ -1,20 +1,20 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import ErrorBoundary from "@/components/ErrorBoundary";
 
 export const metadata: Metadata = {
-  title: "MPA — Master Plan Architect",
-  description: "Surgical payload generation for every industry.",
+  title: "MPA Terminal — Master Plan Architect",
+  description:
+    "Surgical prompt generation for every industry. MACH · Sovereign · Monte Carlo · ZK · Fractal · Media Oracle · APEX-DEFENSE",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body
-        className="bg-[#1C1C1E] text-white antialiased"
-        style={{ fontFamily: "SF Pro Text, system-ui, -apple-system, sans-serif" }}
+        className="bg-[#0a0a0a] text-white antialiased"
+        style={{ fontFamily: "ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" }}
       >
-        <ErrorBoundary>{children}</ErrorBoundary>
+        {children}
       </body>
     </html>
   );
