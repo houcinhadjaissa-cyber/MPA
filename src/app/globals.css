@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
 
 * {
   box-sizing: border-box;
@@ -40,7 +43,7 @@ body {
 }
 
 .prose-invert code {
-  background: rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 4px;
   padding: 2px 5px;
   font-size: 0.85em;
@@ -49,7 +52,7 @@ body {
 
 .prose-invert pre {
   background: #111;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   padding: 1em;
   overflow-x: auto;
@@ -73,7 +76,7 @@ body {
 }
 
 .prose-invert blockquote {
-  border-left: 3px solid rgba(16,185,129,0.4);
+  border-left: 3px solid rgba(16, 185, 129, 0.4);
   padding-left: 1em;
   color: #9ca3af;
   margin: 0.5em 0;
@@ -82,8 +85,9 @@ body {
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
 
 /* Mobile input reset */
-textarea, input { -webkit-appearance: none; appearance: none; }
+textarea,
+input { -webkit-appearance: none; appearance: none; }
