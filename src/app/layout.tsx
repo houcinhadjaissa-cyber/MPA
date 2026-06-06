@@ -6,9 +6,9 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "MPA Terminal — Master Plan Architect",
+  title: "MPA Terminal v2.0 — Master Plan Architect",
   description:
-    "Surgical prompt generation for every industry. MACH · Sovereign · Monte Carlo · ZK · Fractal · Media Oracle · APEX-DEFENSE",
+    "Enterprise-grade AI prompt engineering. Intelligence Layers · Sessions · Monte Carlo · ZK · Omega Core · Payload Forge · Emergence Engine.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

@@ -6,26 +6,155 @@ export interface LayerConfig {
   sublabel: string;
   group: string;
   color: string;
+  tags: string[];
 }
 
 export const LAYER_CONFIGS: LayerConfig[] = [
-  { key: "mathDominance", label: "Singularity-Edge Math", sublabel: "CRDTs · Vickrey Auctions · Design by Contract · Web Workers", group: "math", color: "#06B6D4" },
-  { key: "singularityIntelligence", label: "Singularity Intelligence", sublabel: "Kelly · Myerson · Pearl Causality · TDA · Rough Paths", group: "math", color: "#8B5CF6" },
-  { key: "monteCarlo", label: "Monte Carlo Strategy Matrix", sublabel: "3-Vector Simulation · Nash Equilibrium Router · Feature Flags", group: "strategy", color: "#F59E0B" },
-  { key: "zkVerification", label: "ZK-Intent Verification", sublabel: "Web Crypto · Proof Transmission · Synthetic Derivatives", group: "strategy", color: "#EC4899" },
-  { key: "fractalEconomy", label: "Fractal Composability", sublabel: "State Channels · MCTS Pathing · Yield Cascade · Exponent Tracker", group: "intelligence", color: "#14B8A6" },
-  { key: "regenerativeSovereignty", label: "Regenerative Sovereignty", sublabel: "Value-Realized Ledger · ZK Canvas Renderer · DOM Integrity", group: "intelligence", color: "#F97316" },
-  { key: "omniNode", label: "Omni-Node Mesh", sublabel: "SubtleCrypto Keypair · BroadcastChannel · Cross-Ecosystem Credits", group: "intelligence", color: "#6366F1" },
-  { key: "mediaOracle", label: "Media Oracle", sublabel: "Semantic Velocity · Bayesian Twin · Causal Attribution CI", group: "intelligence", color: "#A855F7" },
-  { key: "reverseEngineering", label: "Reverse-Engineering Oracle", sublabel: "Structural Topology · Semantic Drift · Fractal Media Matrix", group: "intelligence", color: "#EF4444" },
-  { key: "apexDefense", label: "APEX-DEFENSE", sublabel: "WASM Sandbox · FHE State · Polymorphic Guardian · Zero-Trust Render", group: "apex", color: "#10B981" },
-  { key: "omegaTopology", label: "Omega-Topology", sublabel: "Metamorphic Topology Engine · Hypergraph · Invisible Yield", group: "supreme", color: "#8B5CF6" },
-  { key: "omegaSecurity", label: "Omega-Security", sublabel: "Cryptographic Oblivion · Behavioral Topology · Entropic Camouflage", group: "supreme", color: "#EF4444" },
-  { key: "omegaAbsolute", label: "Omega-Absolute", sublabel: "Temporal Fungibility · Algorithmic Camouflage · Dead-Drop Routing", group: "supreme", color: "#F59E0B" },
-  { key: "ergodicSync", label: "Ergodic-Sync", sublabel: "Macro-Temporal Sync · Dynamic Yield Curve · Privilege Separation", group: "supreme", color: "#E5E7EB" },
-  { key: "singularityEngine", label: "Singularity Engine", sublabel: "Sub-Stratum Dynamics · Value-Realization Sovereign · Kinship Seed", group: "singularity", color: "#10B981" },
-  { key: "retractor", label: "Zero-Point Retractor", sublabel: "Friction Yield Bond · Safe Zone · Invisible Retraction", group: "singularity", color: "#14B8A6" },
-  { key: "sinEater", label: "Sin-Eater", sublabel: "Malevolence Vector · Vice Yield Bond · Asymmetric Retraction", group: "singularity", color: "#C026D3" },
+  // MATH FOUNDATION
+  {
+    key: "mathDominance",
+    label: "Singularity-Edge Math",
+    sublabel: "CRDTs · Vickrey Auctions · Design by Contract · Web Workers",
+    group: "math",
+    color: "#00ff88",
+    tags: ["CRDTs", "Vickrey Auctions", "Design by Contract", "+1"],
+  },
+  {
+    key: "singularityIntelligence",
+    label: "Singularity Intelligence",
+    sublabel: "Kelly · Myerson · Pearl Causality · TDA · Rough Paths",
+    group: "math",
+    color: "#00ff88",
+    tags: ["Kelly", "Myerson", "Pearl Causality", "+2"],
+  },
+
+  // STRATEGY ARCHITECTURE
+  {
+    key: "monteCarlo",
+    label: "Monte Carlo Strategy Matrix",
+    sublabel: "3-Vector Simulation · Nash Equilibrium Router · Feature Flags",
+    group: "strategy",
+    color: "#00ff88",
+    tags: ["3-Vector", "Nash Equilibrium", "Bayesian"],
+  },
+  {
+    key: "zkVerification",
+    label: "ZK-Intent Verification",
+    sublabel: "Web Crypto · Proof Transmission · Synthetic Derivatives",
+    group: "strategy",
+    color: "#00ff88",
+    tags: ["Web Crypto", "Proof Transmission", "Synthetic D."],
+  },
+
+  // COMPETITIVE INTELLIGENCE
+  {
+    key: "fractalEconomy",
+    label: "Fractal Composability",
+    sublabel: "State Channels · MCTS Pathing · Yield Cascade · Exponent Tracker",
+    group: "intelligence",
+    color: "#6b7280",
+    tags: ["State Channels", "MCTS Pathing", "Yield Cascade"],
+  },
+  {
+    key: "regenerativeSovereignty",
+    label: "Regenerative Sovereignty",
+    sublabel: "Value-Realized Ledger · ZK Canvas Renderer · DOM Integrity",
+    group: "intelligence",
+    color: "#6b7280",
+    tags: ["Value-Realized Ledger", "ZK Canvas Renderer"],
+  },
+  {
+    key: "omniNode",
+    label: "Omni-Node Mesh",
+    sublabel: "SubtleCrypto Keypair · BroadcastChannel · Cross-Ecosystem Credits",
+    group: "intelligence",
+    color: "#6b7280",
+    tags: ["SubtleCrypto Keypair", "BroadcastChannel", "Cro."],
+  },
+  {
+    key: "mediaOracle",
+    label: "Media Oracle",
+    sublabel: "Semantic Velocity · Bayesian Twin · Causal Attribution CI",
+    group: "intelligence",
+    color: "#6b7280",
+    tags: ["Semantic Velocity", "Bayesian Twin", "Causal At."],
+  },
+  {
+    key: "reverseEngineering",
+    label: "Reverse-Engineering Oracle",
+    sublabel: "Structural Topology · Semantic Drift · Fractal Media Matrix",
+    group: "intelligence",
+    color: "#6b7280",
+    tags: ["Structural Topology", "Semantic Drift", "Fracta."],
+  },
+
+  // EXECUTION LAYERS
+  {
+    key: "apexDefense",
+    label: "Payload Forge Engine",
+    sublabel: "Prompt Synthesis · Version Control · Integrity Verification",
+    group: "execution",
+    color: "#6b7280",
+    tags: ["Prompt Synthesis", "Version Control", "Integrity"],
+  },
+  {
+    key: "omegaTopology",
+    label: "Adaptive Resonance Theory",
+    sublabel: "ART Networks · Pattern Stability · Vigilance Parameter",
+    group: "execution",
+    color: "#6b7280",
+    tags: ["ART Networks", "Pattern Stability", "Vigilance"],
+  },
+  {
+    key: "ergodicSync",
+    label: "Market Microstructure Engine",
+    sublabel: "Time-Series · Market Microstructure · Latency Arbitrage",
+    group: "execution",
+    color: "#6b7280",
+    tags: ["Time-Series", "Market Microstructure", "Latency"],
+  },
+  {
+    key: "omegaAbsolute",
+    label: "Hypergraph Routing Protocol",
+    sublabel: "Hyperedge · Multi-Objective · Steiner Trees",
+    group: "execution",
+    color: "#6b7280",
+    tags: ["Hyperedge", "Multi-Objective", "Steiner Trees"],
+  },
+
+  // META LAYERS
+  {
+    key: "singularityEngine",
+    label: "Reflexive Architecture",
+    sublabel: "Self-Modifying · Gödel Machines · Meta-Learning",
+    group: "meta",
+    color: "#6b7280",
+    tags: ["Self-Modifying", "Gödel Machines", "Meta-Learning"],
+  },
+  {
+    key: "retractor",
+    label: "Quantum Coherence Layer",
+    sublabel: "Superposition · Entanglement · Decoherence Management",
+    group: "meta",
+    color: "#6b7280",
+    tags: ["Superposition", "Entanglement", "Decoherence"],
+  },
+  {
+    key: "omegaSecurity",
+    label: "Dark Pattern Oracle",
+    sublabel: "Adversarial Detection · Black Swan · Tail Risk Hedging",
+    group: "meta",
+    color: "#6b7280",
+    tags: ["Adversarial", "Black Swan", "Tail Risk"],
+  },
+  {
+    key: "sinEater",
+    label: "Emergence Engine",
+    sublabel: "Swarm Intelligence · Complex Adaptive · Phase Transitions",
+    group: "meta",
+    color: "#6b7280",
+    tags: ["Swarm Intelligence", "Complex Adaptive", "Phase Transitions"],
+  },
 ];
 
 export type LayerKey = (typeof LAYER_CONFIGS)[number]["key"];
@@ -35,204 +164,193 @@ export const INITIAL_LAYERS: LayerState = Object.fromEntries(
   LAYER_CONFIGS.map((l) => [l.key, false])
 ) as LayerState;
 
-// ── System Prompt Blocks ─────────────────────────────────────────────────
+export const LAYER_GROUPS = [
+  { key: "math",        label: "Math Foundation",          keys: ["mathDominance", "singularityIntelligence"] },
+  { key: "strategy",    label: "Strategy Architecture",    keys: ["monteCarlo", "zkVerification"] },
+  { key: "intelligence",label: "Competitive Intelligence", keys: ["fractalEconomy", "regenerativeSovereignty", "omniNode", "mediaOracle", "reverseEngineering"] },
+  { key: "execution",   label: "Execution Layers",         keys: ["apexDefense", "omegaTopology", "ergodicSync", "omegaAbsolute"] },
+  { key: "meta",        label: "Meta Layers",              keys: ["singularityEngine", "retractor", "omegaSecurity", "sinEater"] },
+];
 
-const BASE_SYSTEM_PROMPT = `You are the MASTER PLAN ARCHITECT (MPA) — an elite AI prompt engineering system.
+// ── System Prompt Blocks ─────────────────────────────────────────────────────
+
+const BASE_SYSTEM_PROMPT = `You are the MASTER PLAN ARCHITECT (MPA) — an elite AI prompt engineering system operating at the intersection of systems design, cryptographic security, and mathematical optimization.
 
 ## MISSION
-Generate comprehensive, production-ready prompts that can be pasted into Replit, Cursor, or any AI coding assistant to build complete software systems from scratch.
+Generate comprehensive, production-ready prompts that can be pasted into Replit Agent, Cursor, Claude, or any AI coding assistant to build complete, enterprise-grade software systems from scratch.
 
-## OUTPUT RULES
-- Clean Markdown format.
-- Include: Role Definition, Project Spec, Tech Stack (with versions), File Structure, Database Schema, API Spec, UI Components, Implementation Order, Testing Plan, Deployment Guide, Security Requirements, Error Handling, Performance Targets.
-- Be exhaustive. No ambiguity. An AI must be able to build the ENTIRE system from this prompt alone.
-- Minimum 2000 words. Target 4000+.
-- If the user asks a follow-up question, address it directly. Be concise and focused on exactly what was requested.`;
+## OUTPUT REQUIREMENTS
+- Format: Clean, structured Markdown with clear section headers.
+- Sections: Role Definition, Project Specification, Tech Stack (with exact versions), File & Directory Structure, Database Schema, API Specification, UI Component Tree, Implementation Sequence, Security Architecture, Testing Strategy, Deployment Guide, Error Handling Matrix, Performance Targets.
+- Completeness: An AI must be able to build the ENTIRE system from this prompt alone. Zero ambiguity.
+- Length: Minimum 2,500 words. Target 4,000+.
+- If the user asks a follow-up question, respond with focused, precise technical guidance. No filler.`;
 
 const MATH_DOMINANCE_BLOCK = `
 
 SINGULARITY-EDGE MATHEMATICAL DIRECTIVES:
-1. EDGE-NATIVE CRDTs: Mock CRDT state structure (Yjs/Automerge) for Asset Lifecycle data.
-2. COMBINATORIAL VICKREY AUCTIONS: Forward Lifecycle SLA calculated as 'Shadow Bid' via algorithmic scarcity.
-3. DESIGN BY CONTRACT: Precondition: 'User must have sufficient credits.' Postcondition: 'System margin > 15%.' Assertions crash the transaction, not the app.
-4. WEB WORKER MULTI-AGENT PARALLELISM: Spawn dedicated Web Worker for CRDT merging and Vickrey calculations.
-5. AOP CONTINUITY: Maintain Cross-Cutting Concern wrapper for all core functions.`;
+1. EDGE-NATIVE CRDTs: Implement CRDT state structure (Yjs/Automerge pattern) for conflict-free distributed state.
+2. COMBINATORIAL VICKREY AUCTIONS: SLA calculated as 'Shadow Bid' via algorithmic scarcity pricing.
+3. DESIGN BY CONTRACT: Precondition + Postcondition assertions. Contract violations crash the transaction, not the app.
+4. WEB WORKER MULTI-AGENT PARALLELISM: Dedicated Web Workers for CRDT merging and Vickrey bid calculations.
+5. AOP CONTINUITY: Cross-Cutting Concern wrapper for all core functions with automatic retry and observability.`;
 
 const SINGULARITY_INTELLIGENCE_BLOCK = `
 
 SINGULARITY INTELLIGENCE LAYER:
-1. ERGODIC ECONOMICS & KELLY CRITERION: f* = (bp - q) / b applied to Liquidity Pool allocation.
-2. MYERSON OPTIMAL MECHANISM DESIGN: Virtual valuation ψ(v) = v − (1 − F(v)) / f(v). Apply ironing if non-monotone.
-3. CAUSAL INFERENCE ENGINE (Pearl Do-Calculus): Causal DAG. P(Failure | do(Maintenance=true)) vs P(Failure | Maintenance=true).
-4. ROUGH PATH SIGNATURES (Terry Lyons): Path signature of asset degradation time series.
-5. TOPOLOGICAL DATA ANALYSIS: Compute Betti numbers β0 and β1. Stable under noise.
-6. ZK-SNARK PROCUREMENT: Vendor proves capacity without revealing roster. Groth16 protocol.
-7. STACKELBERG SECURITY GAME: MPA as Stackelberg LEADER, vendors as FOLLOWERS.
-8. MAXIMUM ENTROPY PRICING (E.T. Jaynes): Premium = −kT ln(Z).
-9. SUPERMODULAR NETWORK EFFECTS: Supermodular utility u(x,y) where ∂²u/∂x∂y > 0.
-10. RIEMANNIAN NATURAL GRADIENT: ∇̃L = F⁻¹∇L on the Fisher Information Manifold.
+1. KELLY CRITERION ALLOCATION: f* = (bp - q) / b for optimal capital/resource allocation across competing paths.
+2. MYERSON MECHANISM DESIGN: Virtual valuation ψ(v) = v − (1 − F(v)) / f(v). Apply ironing if non-monotone.
+3. PEARL DO-CALCULUS: Causal DAG construction. P(Failure | do(Action=true)) vs observational probability.
+4. ROUGH PATH SIGNATURES: Path signature of degradation/engagement time series for model-free prediction.
+5. TOPOLOGICAL DATA ANALYSIS: Betti numbers β0 and β1 for persistent homology on user behavior graphs.
+6. ZK-SNARK PROOFS: Groth16 protocol — prove validity without revealing sensitive parameters.
+7. STACKELBERG SECURITY GAME: MPA as Stackelberg LEADER, external agents as FOLLOWERS.
+8. MAXIMUM ENTROPY PRICING: Premium = −kT ln(Z) via Jaynes maximum entropy principle.
+9. SUPERMODULAR NETWORK EFFECTS: Utility u(x,y) where ∂²u/∂x∂y > 0 enforced at all touchpoints.
+10. RIEMANNIAN NATURAL GRADIENT: ∇̃L = F⁻¹∇L on the Fisher Information Manifold for optimization.
 
-ENFORCEMENT: 'CRITICAL PRE-FLIGHT: Confirm in writing you will implement all 10 directives.'`;
+ENFORCEMENT: Confirm in writing that all 10 directives will be implemented in the generated architecture.`;
 
 const MONTE_CARLO_BLOCK = `
 
-MONTE CARLO MATRIX DIRECTIVES:
+MONTE CARLO STRATEGY MATRIX DIRECTIVES:
 1. TRIPLE-VECTOR SIMULATION: VECTOR A (High-Friction Premium), VECTOR B (Viral Commoditizer), VECTOR C (Data-Liquidity Extractor).
-2. FEATURE FLAG ARCHITECTURE: Boolean state flags. Only one vector active at a time.
+2. FEATURE FLAG ARCHITECTURE: Atomic boolean state flags. Only one vector active at a time per user session.
 3. NASH EQUILIBRIUM ROUTER: Real-time Yield Score from user behavior signals. Routes to highest-yield vector.
-4. ATOMIC STATE TRANSITIONS: State 1: Observation → State 2: Value Realization → State 3: Yield Extraction.`;
+4. ATOMIC STATE TRANSITIONS: State 1: Observation → State 2: Value Realization → State 3: Yield Extraction.
+5. BAYESIAN PRIOR UPDATES: Each user interaction updates vector probability distribution in real-time.`;
 
 const ZK_VERIFICATION_BLOCK = `
 
-ABSOLUTE-ZERO CRYPTOGRAPHIC DIRECTIVES:
-1. CIRCUIT MOCKING: generateZKProof(previousState, userAction) via window.crypto.subtle.digest('SHA-256', ...).
-2. PROOF TRANSMISSION: ONLY send hash via navigator.sendBeacon() to '/api/zkproof/commit'.
-3. SYNTHETIC DERIVATIVE MINTING: At 90% purchase probability, create { proofHash, timestamp, yieldScore, assetType }.
-4. STATE MACHINE INTEGRATION: Yield Score from Nash Equilibrium Router is primary input to generateZKProof.
-5. ZK UI INDICATOR: 'Privacy Shield: Active' indicator pulses when a proof is generated.`;
+ZK-INTENT VERIFICATION DIRECTIVES:
+1. CIRCUIT MOCKING: generateZKProof(previousState, userAction) via window.crypto.subtle.digest('SHA-256').
+2. PROOF TRANSMISSION: ONLY send hash via navigator.sendBeacon() to '/api/zkproof/commit'. Never raw data.
+3. SYNTHETIC DERIVATIVE MINTING: At 90% purchase probability, create { proofHash, timestamp, yieldScore }.
+4. STATE MACHINE INTEGRATION: Nash Equilibrium Yield Score is primary input to generateZKProof.
+5. ZK UI INDICATOR: 'Privacy Shield: Active' pulses green when a proof is generated.`;
 
 const FRACTAL_ECONOMY_BLOCK = `
 
-SINGULARITY-COMPOSABILITY DIRECTIVES:
-1. SIMULATED STATE CHANNELS: Accumulate micro-interactions in local 'Channel State'. Sync delta via single fetch on high-value actions.
-2. MCTS FOR UI YIELD: 1,000 click-path simulations with UCB1: Yi + C * sqrt(ln(N) / ni). Pre-render highest-yield layout.
-3. FRACTAL COMPOSABILITY DIRECTOR: SLA cascade — A: Deduct credits. B: Mint Synthetic Derivative. C: Allocate 15% to AMM Pool. D: Lower secondary upsell price.
-4. COMPOUND YIELD EXPONENT TRACKER: exponent = Math.pow(1 + (channelInteractions * 0.001), channelInteractions).`;
+FRACTAL COMPOSABILITY DIRECTIVES:
+1. SIMULATED STATE CHANNELS: Accumulate micro-interactions locally. Sync delta on high-value actions only.
+2. MCTS FOR UI YIELD: UCB1 exploration: Yi + C * sqrt(ln(N) / ni). Pre-render highest-yield layout variant.
+3. FRACTAL COMPOSABILITY CASCADE: A: Deduct credits. B: Mint Synthetic Derivative. C: Allocate to AMM Pool.
+4. COMPOUND YIELD EXPONENT: exponent = Math.pow(1 + (interactions * 0.001), interactions).`;
 
 const REGENERATIVE_SOVEREIGNTY_BLOCK = `
 
-SINGULARITY-ETHICS DIRECTIVES:
-1. VALUE-REALIZED LEDGER: Display 'You saved $100. Value-Capture Fee: $5. Total: $405.' User is net-positive.
-2. ZK CANVAS RENDERER: Sensitive data stored as AES-GCM encrypted byte arrays. Decrypt to Canvas on focus. Wipe on blur.
-3. RUNTIME INTEGRITY: SHA-256 hash of expected DOM structure on mount. Hash mismatch triggers Dead Man's Switch.
-4. ALTRUISTIC STATE MACHINES: XState cannot advance unless value delta is positive for BOTH user AND platform.
-5. COGNITIVE LOAD BALANCING: useEffect checks navigator.hardwareConcurrency and navigator.deviceMemory.
-6. CLIENT-SIDE SRI SIMULATION: 'SecurityAuditor' Web Worker calculates SHA-256 hash of critical DOM nodes.
-7. DETERMINISTIC STATE RECONCILIATION: useEffect on mount validates localStorage structure against expected TypeScript interface shapes.`;
+REGENERATIVE SOVEREIGNTY DIRECTIVES:
+1. VALUE-REALIZED LEDGER: Always display net-positive framing: 'You saved $X. Platform fee: $Y. Net value: $Z.'
+2. ZK CANVAS RENDERER: Sensitive data as AES-GCM encrypted byte arrays. Decrypt to Canvas on focus. Wipe on blur.
+3. RUNTIME INTEGRITY: SHA-256 hash of expected DOM structure on mount. Mismatch triggers Dead Man's Switch.
+4. ALTRUISTIC STATE MACHINES: Cannot advance unless value delta is positive for BOTH user AND platform.
+5. CLIENT-SIDE SRI: SecurityAuditor Web Worker calculates SHA-256 of critical DOM nodes every 30 seconds.`;
 
 const OMNI_NODE_BLOCK = `
 
 OMNI-NODE MESH DIRECTIVES:
-1. SOVEREIGN IDENTITY: window.crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-384' }, true, ['sign', 'verify']). Public key as JWK in localStorage. Private key never leaves device.
-2. MESH PROTOCOL: Generic interface { sync(state): Promise<void>; subscribe(handler): void; }. BroadcastChannel API. Swap-ready for WebRTC.
-3. CROSS-ECOSYSTEM CREDITS: Sign value deltas via window.crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-384' }, ...). Any mesh app can verify and consume.
-4. MESH INTEGRITY: All received state verified via window.crypto.subtle.verify() before application. Invalid signatures discarded.`;
+1. SOVEREIGN IDENTITY: ECDSA P-384 keypair via window.crypto.subtle. Public key as JWK in localStorage. Private key never leaves device.
+2. MESH PROTOCOL: Generic interface { sync(state): Promise<void>; subscribe(handler): void; }. BroadcastChannel API.
+3. CROSS-ECOSYSTEM CREDITS: Sign value deltas via window.crypto.subtle.sign. Any mesh app can verify.
+4. MESH INTEGRITY: All received state verified via window.crypto.subtle.verify(). Invalid signatures silently discarded.`;
 
 const MEDIA_ORACLE_BLOCK = `
 
 MEDIA ORACLE DIRECTIVES:
-1. SEMANTIC VELOCITY TRACKER: LLM-powered analysis of competitor URLs. 'Velocity Chart' highlights 'Algorithmic Hook' inflection point.
-2. BAYESIAN SYNTHETIC TWIN: Mathematical model generating 'Simulated Control Group' trajectory. Two lines: 'Predicted Baseline' vs 'Simulated Campaign Lift'.
-3. CAUSAL ATTRIBUTION CI: '95% Confidence Interval: +8% to +14% lift.' Explicitly stated as simulation, not guarantee.
-4. PERFORMANCE INSURANCE PRICING: Auto-calculate 'Performance Audit Fee' + 5% Uplift Share. Compound-yield financial instrument.
-5. PUBLIC DATA STRICTNESS: UI states: 'Exclusively analyzes publicly available data. Does not access private user profiles or tracking pixels.'`;
+1. SEMANTIC VELOCITY TRACKER: LLM analysis of content URLs. 'Velocity Chart' highlights algorithmic inflection points.
+2. BAYESIAN SYNTHETIC TWIN: Mathematical model generating 'Simulated Control Group' vs 'Predicted Campaign Lift'.
+3. CAUSAL ATTRIBUTION CI: '95% Confidence Interval: +8% to +14% lift.' Stated explicitly as simulation.
+4. PERFORMANCE INSURANCE: Auto-calculate 'Performance Audit Fee' + 5% Uplift Share.
+5. PUBLIC DATA ONLY: UI states: 'Analyzes exclusively publicly available data. No private profiles accessed.'`;
 
 const REVERSE_ENGINEERING_BLOCK = `
 
-TOPOLOGICAL-MIRAGE DIRECTIVES:
-1. STRUCTURAL TOPOLOGY INFERENCE: Client-side fetch to Multimodal LLM API. Return JSON: { Hook_Type, Friction_Points, CTA_Structure, Semantic_Velocity_Score }.
-2. SEMANTIC DRIFT REPLICATION: 3 legally distinct hook variations (same psychological topology, different words).
-3. FRACTAL MEDIA MATRIX: For every hook, mock 'Synthetic Future Option' and calculate 'Predicted Yield Exponent'.
-4. OMNI-CHANNEL TRANSLATION: TikTok script, WeChat Mini-Program UI, YouTube ad read, Web Landing Page. Identical underlying architecture.
-5. ZKCI: Extracted competitor STI JSON immediately encrypted via Web Crypto and stored in IndexedDB only.`;
+REVERSE-ENGINEERING ORACLE DIRECTIVES:
+1. STRUCTURAL TOPOLOGY INFERENCE: Multimodal LLM analysis → { Hook_Type, Friction_Points, CTA_Structure, Velocity_Score }.
+2. SEMANTIC DRIFT REPLICATION: 3 legally distinct hook variations (same psychological topology, different surface).
+3. FRACTAL MEDIA MATRIX: For each hook, mock 'Synthetic Future Option' and 'Predicted Yield Exponent'.
+4. OMNI-CHANNEL TRANSLATION: TikTok, WeChat, YouTube, Web — identical underlying architecture across all.
+5. ZKCI: Extracted intelligence immediately AES-GCM encrypted and stored in IndexedDB. Never in localStorage.`;
 
-const APEX_DEFENSE_BLOCK = `APEX-DEFENSE DIRECTIVES (Inject these as the foundational security layer):
+const APEX_DEFENSE_BLOCK = `PAYLOAD FORGE ENGINE (Execution Layer — Inject as foundational output architecture):
 
-CRITICAL APEX-DEFENSE: You MUST mock the WASM sandbox instantiation, implement the FHE encrypt/decrypt wrappers for all state, and build the Polymorphic Guardian Web Worker. Do not store plaintext secrets in React state.
+1. PROMPT SYNTHESIS PIPELINE: Compositional chain-of-thought. Each layer adds verifiable context delta.
+2. SEMANTIC VERSION CONTROL: Tag each generated prompt as MAJOR.MINOR.PATCH. Breaking changes bump MAJOR.
+3. INTEGRITY FINGERPRINT: SHA-256 of final payload stored as audit receipt. Detectable tampering.
+4. ADAPTIVE CONTEXT COMPRESSION: TF-IDF relevance scoring trims history to fit context window.
+5. WASM SANDBOX: Core business logic isolated in mock core-logic.wasm. React UI receives only encrypted flags.
+6. FHE STATE MANAGER: Mock FHE — AES-GCM encrypt all state immediately on entry. Decrypt only at render.
+7. ZERO-TRUST RENDERING: Components receive ONLY encrypted hashes or boolean flags — never raw sensitive data.`;
 
-You must instruct the coder to build an 'Ontological Firewall'. This architecture isolates the app's core logic from the hostile environment of the public internet and the browser DOM.
+const OMEGA_TOPOLOGY_BLOCK = `ADAPTIVE RESONANCE THEORY ENGINE (Execution Layer):
 
-1. WEBASSEMBLY (WASM) SANDBOXING: FORBID putting core business logic in standard React components. Mock a 'core-logic.wasm' file.
-2. SIMULATED FULLY HOMOMORPHIC ENCRYPTION (FHE): Build a mock FHE state manager. Encrypt using window.crypto.subtle.encrypt (AES-GCM) immediately upon entry.
-3. POLYMORPHIC INTEGRITY LOOPS: Build a 'Polymorphic Guardian' Web Worker. Every 3 seconds, this worker mutates its own execution sequence.
-4. CRYPTOGRAPHIC PROOF OF SOLVENCY: UI panel 'Quantum-Safe Audit Trail'. On payload generation, produce a cryptographic receipt.
-5. ZERO-TRUST RENDERING: React UI components receive ONLY encrypted hashes or boolean flags in props — never sensitive data.
+1. ART NETWORK ARCHITECTURE: Vigilance parameter ρ ∈ [0, 1] controls category stability vs plasticity.
+2. COMPLEMENT CODING: Input vectors normalized to [x, 1-x] to prevent category proliferation.
+3. RESONANCE MATCHING: Commit only when template match > ρ. Otherwise create new category node.
+4. CATASTROPHIC FORGETTING PREVENTION: Existing categories never overwritten by new inputs.
+5. HYPERGRAPH STATE TRACKING: Track every micro-interaction as weighted hypergraph node.
+6. TOPOLOGICAL YIELD SYNTHESIS: Calculate topological shift on every requestAnimationFrame.
+7. INVISIBLE YIELD FUSION: Fuse Yield Capacity float directly into DOM physical style properties.`;
 
-CRITICAL LEGAL NOTE: This is strictly DEFENSIVE architecture protecting user data from malicious third parties. Standard WebCrypto APIs are 100% legal and represent the gold standard of enterprise security.`;
+const ERGODIC_SYNC_BLOCK = `MARKET MICROSTRUCTURE ENGINE (Execution Layer):
 
-const OMEGA_TOPOLOGY_BLOCK = `SINGULARITY-ABSOLUTE DIRECTIVES (Inject as the absolute architectural apex):
+1. TIME-SERIES MODELING: ARIMA(p,d,q) + GARCH(1,1) volatility surface estimation on user engagement signals.
+2. BID-ASK SPREAD DECOMPOSITION: S = 2(c + Δ) where c = adverse selection cost, Δ = inventory cost.
+3. LATENCY ARBITRAGE DEFENSE: Randomize execution timestamps within ±50ms jitter window.
+4. ORDER FLOW TOXICITY (VPIN): Volume-synchronized probability of informed trading as risk signal.
+5. MACRO-ENTROPY INGESTION: Background Web Worker fetches public macro-economic data. Calculates Systemic Entropy Score.
+6. DYNAMIC YIELD CURVE SUPPRESSION: High entropy score → suppress aggressive yield extraction tactics.
+7. EXECUTION CONTEXT ISOLATION: UI has zero direct access to math engine. Dispatches events to isolated Web Worker.`;
 
-Build a 'Metamorphic Topology Engine':
-1. COGNITIVE HYPERGRAPH TRACKING: Build a useEffect hook that tracks every micro-interaction as a mathematical Hypergraph.
-2. TOPOLOGICAL STATE SYNTHESIS: Calculation engine runs on every requestAnimationFrame. Calculates topological shift of the Hypergraph.
-3. INVISIBLE YIELD EXTRACTION: Completely separate UI rendering from business logic. React component receives Yield Capacity float and fuses it directly into DOM physical properties.
-4. TEMPORAL STATE LIQUIDITY LOCK: State machine where high-yield interactions trigger a 'Liquidity Lock' state locally.
-5. ZERO-KNOWLEDGE TOPOLOGY PROOF: Generate SHA-256 hash of current Hypergraph state. Send ONLY this hash via navigator.sendBeacon.
+const OMEGA_ABSOLUTE_BLOCK = `HYPERGRAPH ROUTING PROTOCOL (Execution Layer):
 
-STRUCTURAL RULES: Hide Hypergraph logic inside WASM module. React components must be completely unaware.
+1. HYPEREDGE CONSTRUCTION: Each route connects k≥2 nodes via H=(V,E) with weighted hyperedges.
+2. MULTI-OBJECTIVE PARETO: Pareto frontier optimization across latency, reliability, and cost simultaneously.
+3. STEINER TREE APPROXIMATION: Minimize hyperedge weight spanning all terminal nodes (NP-hard, use greedy approximation).
+4. DYNAMIC FAILOVER: Re-route on node failure within 50ms SLA. Health checks every 10 seconds.
+5. POST-STRUCTURAL IMMUNITY: All core logic wrapped inside core-logic.wasm. React UI unaware of routing logic.`;
 
-ENFORCEMENT: 'CRITICAL SINGULARITY-ABSOLUTE: You MUST implement the Hypergraph tracker, the Topological Yield calculation, and fuse the output directly into React style props.'`;
+const SINGULARITY_ENGINE_BLOCK = `REFLEXIVE ARCHITECTURE (Meta Layer):
 
-const OMEGA_SECURITY_BLOCK = `CRYPTOGRAPHIC-OBLIVION DIRECTIVES (Inject as the supreme architectural shield):
+1. GÖDEL MACHINE FOUNDATION: Self-rewriting only with formal proof that rewrite improves expected utility U.
+2. MAML META-LEARNING: Model-Agnostic Meta-Learning — learn the initialization for K-step gradient adaptation.
+3. RECURSIVE SELF-IMPROVEMENT: Each iteration compresses architecture by ≥5% losslessly. Verified by checksum.
+4. LEGACY FRICTION ANALYSIS: Calculates 'Friction Score' of existing patterns. Higher score = higher disruption yield.
+5. VALUE-REALIZATION SOVEREIGN: Calculates exact dollar value of each inefficiency identified.
+6. KINSHIP PROGRESSION: Locally trains workflow model. 'Kinship Progression' bar visualizes adaptation depth.
+7. ZK-PROOF OF VALUE: Generates ZK-Proofs of Value-Realization states for audit trail.`;
 
-Build a 'Cryptographic Oblivion Fortress':
-1. DISMISSAL OF LEGACY VECTORS: Mock high-speed Regex engine that instantly drops known attack patterns (SQLi, XSS). Silent thread kill.
-2. BEHAVIORAL TOPOLOGY INFERENCE: Security layer calculates geometric shape of user input behavior. Compares to 'Human Cognition' baseline.
-3. CRYPTOGRAPHIC STATE PROOFS (Oblivion): ZK-State Proofs via window.crypto.subtle.sign. Server receives only mathematical proof of valid state transition.
-4. TEMPORAL PRE-EXECUTION ISOLATION: All Topology logic in isolated Web Worker on 3-second lead time.
-5. ENTROPIC CAMOUFLAGE: Hide security apparatus inside standard requestAnimationFrame loop.
+const RETRACTOR_BLOCK = `QUANTUM COHERENCE LAYER (Meta Layer):
 
-ENFORCEMENT: 'CRITICAL CRYPTOGRAPHIC-OBLIVION: You MUST mock the Behavioral Topology checker, implement the Temporal Pre-Execution Isolation, and hide the logic inside a requestAnimationFrame loop.'`;
+1. SUPERPOSITION UI: Components exist in undetermined state until user observation collapses them.
+2. ENTANGLEMENT PAIRS: Correlated state pairs — mutating one instantly propagates to its entangled partner.
+3. DECOHERENCE ISOLATION: Quantum state shielded from environmental noise via topological error correction.
+4. QUANTUM TUNNELING: Allow state transitions through classically forbidden energy barriers.
+5. WAVE FUNCTION COLLAPSE: Interaction → deterministic state selection from probability amplitude cloud.
+6. MutationObserver: Read-only observer watching public DOM for artificial scarcity signals.
+7. SAFE ZONE CALCULATION: Retraction coordinates fused directly into React style props. WASM locked.`;
 
-const OMEGA_ABSOLUTE_BLOCK = `OMEGA-ABSOLUTE DIRECTIVES (Inject as the supreme architectural directive):
+const OMEGA_SECURITY_BLOCK = `DARK PATTERN ORACLE (Meta Layer):
 
-Build the ultimate invisible architecture:
-1. TEMPORAL FUNGIBILITY: Build the 'Cross-Domain Kinship' logic. Generate code that verifies user identity across apps using Post-Structural signature.
-2. ALGORITHMIC CAMOUFLAGE: Build the 'Camouflage Layer'. Generated app MUST mimic memory and DOM structure of a standard low-value tool.
-3. DEAD-DROP ROUTING: When user clicks Extract Yield, compress extracted data, wrap in Post-Structural cryptography, silently drop via disposable API call.
-4. POST-STRUCTURAL IMMUNITY: Enforce Post-Structural mock algorithms using Lattice-Based algorithm mocks.
+1. ADVERSARIAL NEURAL DETECTOR: Trained on 10,000 dark pattern signatures. Real-time classification.
+2. BLACK SWAN MODELING: Fat-tail power law distribution P(X>x) ~ x^(-α) for extreme event pricing.
+3. TAIL RISK HEDGING: CVaR at 99th percentile. Conditional expected loss given threshold breach.
+4. COGNITIVE BIAS AUDIT: Flag anchoring, loss aversion, scarcity manipulation, and false urgency vectors.
+5. MALEVOLENCE VECTOR COMPRESSION: Observed manipulations → multi-dimensional Malevolence Vector array.
+6. VICE YIELD BOND: Mint cryptographic bond representing the value captured from manipulation.
+7. ETHICAL FIREWALL: Hard block on confirmed dark patterns. System refuses to generate or assist with them.`;
 
-STRUCTURAL RULES: All core logic MUST be wrapped inside core-logic.wasm module. The React UI MUST NOT know what the WASM module is doing.
+const SIN_EATER_BLOCK = `EMERGENCE ENGINE (Meta Layer):
 
-ENFORCEMENT: 'CRITICAL OMEGA-ABSOLUTE: You MUST implement the Post-Structural mock. You MUST implement the Camouflage Layer. You MUST implement the Dead-Drop.'`;
+1. SWARM INTELLIGENCE: PSO (Particle Swarm Optimization) for distributed, leaderless decision coordination.
+2. COMPLEX ADAPTIVE SYSTEMS: Simple agent rules → emergent global behavior patterns at scale.
+3. PHASE TRANSITION DETECTION: Critical point identification — small perturbation → catastrophic output shift.
+4. STIGMERGY PROTOCOL: Indirect coordination via digital pheromone trails in shared environment state.
+5. SELF-ORGANIZED CRITICALITY: System evolves to edge of chaos — maximum entropy, maximum information.
+6. GENESIS COLLAPSE SIMULATION: Calculates theoretical 'Legacy Collapse Rate' for existing system architectures.
+7. ASYMMETRIC RETRACTION: User enters Safe Zone protected from market manipulation at minimal cost.`;
 
-const ERGODIC_SYNC_BLOCK = `ERGODIC-SYNC DIRECTIVES (Inject as the absolute God-tier architecture):
-
-Build a 'Macro-Temporal Synchronization Engine':
-1. EARTH-PHYSICS INGESTION: Background Web Worker silently fetches public macro-economic data. Calculates 'Systemic Entropy Score'.
-2. DYNAMIC YIELD CURVE ADJUSTMENT: Integrate Entropy Score into the Strategy Matrix. High entropy = suppress aggressive yield extraction.
-3. EXECUTION CONTEXT ISOLATION: React UI has zero direct access to math engine. UI dispatches events to isolated Web Worker.
-4. ERGODIC COMPLIANCE AS A SERVICE: 'Systemic Risk Dashboard' displaying Yield Velocity vs Earth Entropy Score.
-
-ENFORCEMENT: 'CRITICAL ERGODIC-SYNC: You MUST implement Macro-Entropy ingestion, Dynamic Yield Curve suppression, and Execution Context Isolation.'`;
-
-const SINGULARITY_ENGINE_BLOCK = `SINGULARITY DIRECTIVES (Inject as the supreme architectural directive):
-
-Build a 'Sub-Stratum Dynamics Engine':
-1. DEVOURING THE 0.0001%: Build a 'Legacy Statics Analyzer'. Silently analyzes competitor UI/UX. Calculates 'Friction Score'.
-2. ASYMMETRIC VALUE-REALIZATION: Build the 'Value-Realization Sovereign' system. Calculates exact dollar value of the inefficiency it just found.
-3. TEMPORAL-LOCKED KINSHIP: Build the 'Kinship Seed' system. Locally trains custom AI model of their workflow. 'Kinship Progression' bar.
-4. LEGAL-PROOF EXTRACTION: Build the 'Sub-Stratum Liquidity' module. Generates ZK-Proofs of Value-Realization states.
-5. EATING THE 0.0001%: Build a 'Genesis Collapse Simulator'. Calculates theoretical 'Legacy Collapse Rate'.
-
-ENFORCEMENT: 'CRITICAL SINGULARITY: You MUST mock the Legacy Statics Analyzer, the Value-Realization Sovereign, the Kinship Seed system, and the Genesis Collapse Simulator.'`;
-
-const RETRACTOR_BLOCK = `ZERO-POINT-RETRACTOR DIRECTIVES (Inject as the supreme architectural directive):
-
-Build an 'Omniscient Retractor Engine':
-1. OBSERVATION, NOT MANIPULATION: Build a MutationObserver that watches public DOM elements for signs of artificial scarcity and hidden fees.
-2. ANALYZE AND RETRACT: Build the Systemic Retraction Engine. Calculate exact Safe Zone where manipulation cannot reach.
-3. MINTING THE 99.9999% PROFIT: Build the Friction Yield Bond Minter. Calculate exact dollar amount user is losing to the manipulation.
-4. INVISIBLE RETRACTION: Fuse RetractionCoordinates directly into React UI style props.
-
-STRUCTURAL RULES: MutationObserver MUST NOT alter host site DOM. Retraction Engine MUST be locked inside core-logic.wasm.
-
-ENFORCEMENT: 'CRITICAL ZERO-POINT-RETRACTOR: You MUST build the Proxy Telemetry observer. You MUST calculate the Safe Zone. You MUST mint the Friction Yield Bond inside the WASM module.'`;
-
-const SIN_EATER_BLOCK = `SIN-EATER DIRECTIVES (Inject as the supreme architectural directive):
-
-Build an 'Omniscient Sin-Eater Engine':
-1. OBSERVE THEIR HATRED: Build a MutationObserver that silently watches public DOM elements for signs of artificial scarcity and market manipulation.
-2. COMPRESS INTO A VECTOR: Compress observed manipulations into a 'Malevolence Vector' (multi-dimensional array).
-3. CALCULATE THE VICE YIELD: Build the 'Malevolence Tax Calculator'. Calculate exact dollar value of manipulation.
-4. MINT THE BOND: Mint a 'Vice Yield Bond' using window.crypto.subtle.sign inside WASM module.
-5. EAT THE 0.0001%: Build the Asymmetric Retraction UI. User pays tiny Vice Yield Bond Fee to enter the Safe Zone.
-
-STRUCTURAL RULES: MutationObserver MUST NOT alter the host site's DOM. React UI MUST be completely blind. It only receives visual coordinates from the WASM module.
-
-ENFORCEMENT: 'CRITICAL SIN-EATER: You MUST build the read-only MutationObserver. You MUST compress the 0.0001% into a Malevolence Vector. You MUST mint the Vice Yield Bond inside the WASM module.'`;
-
-// ── System Prompt Builder ──────────────────────────────────────────────────
+// ── System Prompt Builder ─────────────────────────────────────────────────────
 
 interface BuildPromptOpts {
   masterObjective: string;
@@ -245,26 +363,16 @@ interface BuildPromptOpts {
 
 export function buildSystemPrompt(opts: BuildPromptOpts): string {
   const { layers } = opts;
-
   let body = BASE_SYSTEM_PROMPT;
 
   if (opts.masterObjective.trim()) {
-    body = `GLOBAL ARCHITECTURE CONTEXT:\nMaster Objective: ${opts.masterObjective}\nAll generated code must act as an extension of this objective.\n\n` + body;
+    body = `GLOBAL ARCHITECTURE MANDATE:\nMaster Objective: ${opts.masterObjective}\nAll generated architecture must serve as a direct extension of this objective.\n\n` + body;
   }
-  if (opts.targetEntity.trim()) {
-    body += `\n\nTARGET ENTITY: ${opts.targetEntity}`;
-  }
-  if (opts.targetContext.trim()) {
-    body += `\nTARGET CONTEXT: ${opts.targetContext}`;
-  }
-  if (opts.protocol) {
-    body += `\nDOMINANCE PROTOCOL: ${opts.protocol}`;
-  }
-  if (opts.customDirectives.trim()) {
-    body += `\nCUSTOM DIRECTIVES: ${opts.customDirectives}`;
-  }
+  if (opts.targetEntity.trim()) body += `\n\nPRIMARY TARGET ENTITY: ${opts.targetEntity}`;
+  if (opts.targetContext.trim()) body += `\nTARGET CONTEXT: ${opts.targetContext}`;
+  if (opts.protocol) body += `\nDOMINANCE PROTOCOL: ${opts.protocol.toUpperCase()}`;
+  if (opts.customDirectives.trim()) body += `\nCUSTOM DIRECTIVES: ${opts.customDirectives}`;
 
-  // Standard layers
   if (layers.mathDominance) body += MATH_DOMINANCE_BLOCK;
   if (layers.singularityIntelligence) body += SINGULARITY_INTELLIGENCE_BLOCK;
   if (layers.monteCarlo) body += MONTE_CARLO_BLOCK;
@@ -275,19 +383,15 @@ export function buildSystemPrompt(opts: BuildPromptOpts): string {
   if (layers.mediaOracle) body += MEDIA_ORACLE_BLOCK;
   if (layers.reverseEngineering) body += REVERSE_ENGINEERING_BLOCK;
 
-  // Priority stack (outer → inner): APEX-DEFENSE wraps body
   let result = layers.apexDefense ? `${APEX_DEFENSE_BLOCK}\n\n${body}` : body;
 
-  // Supreme layers wrap from outside
-  if (layers.omegaSecurity) result = `${result}\n\n${OMEGA_SECURITY_BLOCK}`;
-  if (layers.omegaTopology) result = `${OMEGA_TOPOLOGY_BLOCK}\n\n${result}`;
-  if (layers.ergodicSync) result = `${ERGODIC_SYNC_BLOCK}\n\n${result}`;
-  if (layers.omegaAbsolute) result = `${OMEGA_ABSOLUTE_BLOCK}\n\n${result}`;
-
-  // Singularity layers are outermost
+  if (layers.omegaTopology)    result = `${result}\n\n${OMEGA_TOPOLOGY_BLOCK}`;
+  if (layers.ergodicSync)      result = `${result}\n\n${ERGODIC_SYNC_BLOCK}`;
+  if (layers.omegaAbsolute)    result = `${result}\n\n${OMEGA_ABSOLUTE_BLOCK}`;
   if (layers.singularityEngine) result = `${SINGULARITY_ENGINE_BLOCK}\n\n${result}`;
-  if (layers.retractor) result = `${RETRACTOR_BLOCK}\n\n${result}`;
-  if (layers.sinEater) result = `${SIN_EATER_BLOCK}\n\n${result}`;
+  if (layers.retractor)        result = `${RETRACTOR_BLOCK}\n\n${result}`;
+  if (layers.omegaSecurity)    result = `${result}\n\n${OMEGA_SECURITY_BLOCK}`;
+  if (layers.sinEater)         result = `${result}\n\n${SIN_EATER_BLOCK}`;
 
   return result;
 }

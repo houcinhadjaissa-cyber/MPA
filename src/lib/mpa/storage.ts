@@ -1,4 +1,4 @@
-const PREFIX = "mpa_";
+const PREFIX = "mpa_v2_";
 
 export function lsGet(key: string, fallback = ""): string {
   if (typeof window === "undefined") return fallback;
@@ -16,11 +16,25 @@ export function lsRemove(key: string) {
 }
 
 export function lsGetJSON<T>(key: string, fallback: T): T {
-  try { return JSON.parse(lsGet(key, "null")) ?? fallback; } catch { return fallback; }
+  try {
+    const raw = lsGet(key, "null");
+    const parsed = JSON.parse(raw);
+    return parsed ?? fallback;
+  } catch { return fallback; }
 }
 
 export function lsSetJSON(key: string, value: unknown) {
   lsSet(key, JSON.stringify(value));
+}
+
+export function lsClear(prefix?: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const keys = Object.keys(localStorage).filter((k) =>
+      k.startsWith(prefix ?? PREFIX)
+    );
+    keys.forEach((k) => localStorage.removeItem(k));
+  } catch {}
 }
 
 export const LS_KEYS = {
@@ -36,5 +50,8 @@ export const LS_KEYS = {
   LAYERS:            "layers",
   CHAT_HISTORY:      "chat_history",
   PROJECTS:          "projects",
+  SESSIONS:          "sessions",
+  ACTIVE_SESSION:    "active_session",
   PROMPT_HISTORY:    "prompt_history",
+  THEME:             "theme",
 } as const;

@@ -1,49 +1,101 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Shield, ChevronLeft, ChevronRight } from "lucide-react";
-import ChatPanel from "@/components/mpa/ChatPanel";
-import type { ChatMessage } from "@/components/mpa/ChatPanel";
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
+import ChatPanel, { type ChatMessage } from "@/components/mpa/ChatPanel";
 import OutputViewer from "@/components/mpa/OutputViewer";
 import LayerPanel from "@/components/mpa/LayerPanel";
-import SettingsPanel from "@/components/mpa/SettingsPanel";
-import TemplateSelector from "@/components/mpa/TemplateSelector";
-import ProjectVault from "@/components/mpa/ProjectVault";
-import type { SavedProject } from "@/components/mpa/ProjectVault";
-import DynamicIsland from "@/components/mpa/DynamicIsland";
-import MobileNav from "@/components/mpa/MobileNav";
-import type { MobileTab } from "@/components/mpa/MobileNav";
+import ConfigPanel from "@/components/mpa/ConfigPanel";
+import SessionsPanel, { type Session } from "@/components/mpa/SessionsPanel";
+import MobileNav, { type MobileTab } from "@/components/mpa/MobileNav";
+
 import { buildSystemPrompt, INITIAL_LAYERS, type LayerState, type LayerKey } from "@/lib/mpa/layers";
+import { assemblePayload } from "@/lib/mpa/payloadGenerator";
 import { type IndustryTemplate } from "@/lib/mpa/templates";
 import { lsGet, lsSet, lsGetJSON, lsSetJSON, LS_KEYS } from "@/lib/mpa/storage";
+import { generateSyncId } from "@/lib/mpa/crypto";
+
+// ─── Session full data ────────────────────────────────────────────────────────
+interface SessionData {
+  id: string;
+  name: string;
+  objective: string;
+  messages: ChatMessage[];
+  layers: LayerState;
+  payload: string;
+  tokensUsed: number;
+  durationMs: number;
+  activeModel: string;
+  createdAt: number;
+  lastUsed: number;
+}
+
+function newSessionData(name = "Default Session", objective = ""): SessionData {
+  return {
+    id: generateSyncId(),
+    name,
+    objective,
+    messages: [],
+    layers: { ...INITIAL_LAYERS },
+    payload: "",
+    tokensUsed: 0,
+    durationMs: 0,
+    activeModel: "",
+    createdAt: Date.now(),
+    lastUsed: Date.now(),
+  };
+}
+
+function toSessionMeta(sd: SessionData): Session {
+  return {
+    id: sd.id,
+    name: sd.name,
+    objective: sd.objective,
+    messageCount: sd.messages.length,
+    activeLayerCount: Object.values(sd.layers).filter(Boolean).length,
+    createdAt: sd.createdAt,
+    lastUsed: sd.lastUsed,
+  };
+}
 
 export default function Home() {
+  // ── Global config (shared across sessions) ─────────────────────────────────
   const [apiKey, setApiKey] = useState("");
   const [apiProvider, setApiProvider] = useState<"groq" | "openai">("groq");
-  const [model, setModel] = useState("llama3-70b-8192");
+  const [model, setModel] = useState("llama-3.3-70b-versatile");
   const [masterObjective, setMasterObjective] = useState("");
   const [targetEntity, setTargetEntity] = useState("");
   const [targetContext, setTargetContext] = useState("");
   const [protocol, setProtocol] = useState("rest");
   const [customDirectives, setCustomDirectives] = useState("");
   const [temperature, setTemperature] = useState(0.7);
-  const [showKey, setShowKey] = useState(false);
+
+  // ── Session store ──────────────────────────────────────────────────────────
+  const [sessions, setSessions] = useState<SessionData[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string>("");
+
+  // ── Active session state ───────────────────────────────────────────────────
   const [layers, setLayers] = useState<LayerState>({ ...INITIAL_LAYERS });
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [payload, setPayload] = useState("");
   const [tokensUsed, setTokensUsed] = useState(0);
   const [durationMs, setDurationMs] = useState(0);
   const [activeModel, setActiveModel] = useState("");
-  const [isStreaming, setIsStreaming] = useState(false);
+
+  // ── UI state ───────────────────────────────────────────────────────────────
   const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [islandMode, setIslandMode] = useState<"idle" | "generating" | "success" | "error">("idle");
   const [islandError, setIslandError] = useState<string | undefined>();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileTab, setMobileTab] = useState<MobileTab>("chat");
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [projects, setProjects] = useState<SavedProject[]>([]);
+
   const islandTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatMessagesRef = useRef<ChatMessage[]>([]);
+  const saveDebouncerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipSaveRef = useRef(false); // suppress save during session load
 
   useEffect(() => { chatMessagesRef.current = chatMessages; }, [chatMessages]);
 
@@ -52,22 +104,61 @@ export default function Home() {
     islandTimer.current = setTimeout(() => setIslandMode("idle"), ms);
   }, []);
 
+  // ── Persist sessions (debounced 600ms) ───────────────────────────────────
+  const debouncedSave = useCallback((updated: SessionData[]) => {
+    if (saveDebouncerRef.current) clearTimeout(saveDebouncerRef.current);
+    saveDebouncerRef.current = setTimeout(() => {
+      lsSetJSON(LS_KEYS.SESSIONS, updated);
+    }, 600);
+  }, []);
+
+  // ── Bootstrap ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (typeof window === "undefined") return;
+
     setApiKey(lsGet(LS_KEYS.API_KEY));
     setApiProvider(lsGet(LS_KEYS.API_PROVIDER, "groq") as "groq" | "openai");
-    setModel(lsGet(LS_KEYS.MODEL, "llama3-70b-8192"));
+    setModel(lsGet(LS_KEYS.MODEL, "llama-3.3-70b-versatile"));
     setMasterObjective(lsGet(LS_KEYS.MASTER_OBJECTIVE));
     setTargetEntity(lsGet(LS_KEYS.TARGET_ENTITY));
     setTargetContext(lsGet(LS_KEYS.TARGET_CONTEXT));
     setProtocol(lsGet(LS_KEYS.PROTOCOL, "rest"));
     setCustomDirectives(lsGet(LS_KEYS.CUSTOM_DIRECTIVES));
     setTemperature(parseFloat(lsGet(LS_KEYS.TEMPERATURE, "0.7")));
-    setLayers(lsGetJSON<LayerState>(LS_KEYS.LAYERS, { ...INITIAL_LAYERS }));
-    setChatMessages(lsGetJSON<ChatMessage[]>(LS_KEYS.CHAT_HISTORY, []));
-    setProjects(lsGetJSON<SavedProject[]>(LS_KEYS.PROJECTS, []));
+
+    const stored = lsGetJSON<SessionData[]>(LS_KEYS.SESSIONS, []);
+    const storedActiveId = lsGet(LS_KEYS.ACTIVE_SESSION, "");
+
+    skipSaveRef.current = true;
+
+    if (stored.length === 0) {
+      const def = newSessionData("Default Session");
+      setSessions([def]);
+      setActiveSessionId(def.id);
+      applySessionData(def);
+    } else {
+      setSessions(stored);
+      const targetId = storedActiveId && stored.find((s) => s.id === storedActiveId)
+        ? storedActiveId
+        : stored[0].id;
+      setActiveSessionId(targetId);
+      applySessionData(stored.find((s) => s.id === targetId)!);
+    }
+
+    setTimeout(() => { skipSaveRef.current = false; }, 100);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function applySessionData(sd: SessionData) {
+    setLayers(sd.layers ?? { ...INITIAL_LAYERS });
+    setChatMessages(sd.messages ?? []);
+    setPayload(sd.payload ?? "");
+    setTokensUsed(sd.tokensUsed ?? 0);
+    setDurationMs(sd.durationMs ?? 0);
+    setActiveModel(sd.activeModel ?? "");
+  }
+
+  // ── Persist global config ────────────────────────────────────────────────
   useEffect(() => { lsSet(LS_KEYS.API_KEY, apiKey); }, [apiKey]);
   useEffect(() => { lsSet(LS_KEYS.API_PROVIDER, apiProvider); }, [apiProvider]);
   useEffect(() => { lsSet(LS_KEYS.MODEL, model); }, [model]);
@@ -77,87 +168,175 @@ export default function Home() {
   useEffect(() => { lsSet(LS_KEYS.PROTOCOL, protocol); }, [protocol]);
   useEffect(() => { lsSet(LS_KEYS.CUSTOM_DIRECTIVES, customDirectives); }, [customDirectives]);
   useEffect(() => { lsSet(LS_KEYS.TEMPERATURE, temperature.toString()); }, [temperature]);
-  useEffect(() => { lsSetJSON(LS_KEYS.LAYERS, layers); }, [layers]);
-  useEffect(() => { lsSetJSON(LS_KEYS.CHAT_HISTORY, chatMessages.slice(-100)); }, [chatMessages]);
-  useEffect(() => { lsSetJSON(LS_KEYS.PROJECTS, projects); }, [projects]);
+  useEffect(() => { if (activeSessionId) lsSet(LS_KEYS.ACTIVE_SESSION, activeSessionId); }, [activeSessionId]);
 
+  // ── Save active session on state changes ─────────────────────────────────
+  useEffect(() => {
+    if (!activeSessionId || skipSaveRef.current) return;
+    setSessions((prev) => {
+      const updated = prev.map((s) =>
+        s.id === activeSessionId
+          ? {
+              ...s,
+              layers,
+              messages: chatMessages,
+              payload,
+              tokensUsed,
+              durationMs,
+              activeModel,
+              objective: masterObjective,
+              lastUsed: Date.now(),
+            }
+          : s
+      );
+      debouncedSave(updated);
+      return updated;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layers, chatMessages, payload, tokensUsed, durationMs, activeModel]);
+
+  // ── Session CRUD ──────────────────────────────────────────────────────────
+  const handleNewSession = useCallback(() => {
+    const sd = newSessionData(`Session ${Date.now().toString(36).slice(-4).toUpperCase()}`, masterObjective);
+    setSessions((prev) => {
+      const updated = [sd, ...prev];
+      debouncedSave(updated);
+      return updated;
+    });
+    skipSaveRef.current = true;
+    setActiveSessionId(sd.id);
+    applySessionData(sd);
+    setTimeout(() => { skipSaveRef.current = false; }, 100);
+    setMobileTab("chat");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [masterObjective, debouncedSave]);
+
+  const handleSelectSession = useCallback((id: string) => {
+    if (id === activeSessionId) return;
+    const sd = sessions.find((s) => s.id === id);
+    if (!sd) return;
+    skipSaveRef.current = true;
+    setActiveSessionId(id);
+    applySessionData(sd);
+    setTimeout(() => { skipSaveRef.current = false; }, 100);
+    setMobileTab("chat");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions, activeSessionId]);
+
+  const handleDeleteSession = useCallback((id: string) => {
+    setSessions((prev) => {
+      const updated = prev.filter((s) => s.id !== id);
+      if (updated.length === 0) {
+        const def = newSessionData();
+        skipSaveRef.current = true;
+        setActiveSessionId(def.id);
+        applySessionData(def);
+        setTimeout(() => { skipSaveRef.current = false; }, 100);
+        debouncedSave([def]);
+        return [def];
+      }
+      debouncedSave(updated);
+      if (id === activeSessionId) {
+        skipSaveRef.current = true;
+        setActiveSessionId(updated[0].id);
+        applySessionData(updated[0]);
+        setTimeout(() => { skipSaveRef.current = false; }, 100);
+      }
+      return updated;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSessionId, debouncedSave]);
+
+  const handleRenameSession = useCallback((id: string, name: string) => {
+    setSessions((prev) => {
+      const updated = prev.map((s) => s.id === id ? { ...s, name } : s);
+      debouncedSave(updated);
+      return updated;
+    });
+  }, [debouncedSave]);
+
+  // ── Layer toggle ──────────────────────────────────────────────────────────
   const handleLayerToggle = useCallback((key: LayerKey) => {
     setLayers((prev) => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
+  // ── Shared API call ───────────────────────────────────────────────────────
+  const callApi = useCallback(async (
+    body: Record<string, unknown>
+  ): Promise<{ message: string; tokensUsed: number }> => {
+    const endpoint = apiProvider === "openai" ? "/api/chat" : "/api/groq";
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      let errMsg = `Server error (${res.status})`;
+      try { const d = await res.json(); errMsg = d.error || errMsg; } catch {}
+      throw new Error(errMsg);
+    }
+    const data = await res.json();
+    if (!data.success && !data.message) throw new Error(data.error || "No response.");
+    return { message: data.message || data.reply || "", tokensUsed: data.tokensUsed ?? 0 };
+  }, [apiProvider]);
+
+  // ── Chat send ─────────────────────────────────────────────────────────────
   const handleSendMessage = useCallback(async (text: string): Promise<string | null> => {
     const systemPrompt = buildSystemPrompt({ masterObjective, targetEntity, targetContext, protocol, customDirectives, layers });
-    const historyForApi = chatMessagesRef.current.slice(-20).map((m) => ({ role: m.role, content: m.content }));
+    const history = chatMessagesRef.current.slice(-20).map((m) => ({ role: m.role, content: m.content }));
     try {
-      const endpoint = apiProvider === "openai" ? "/api/chat" : "/api/groq";
       const body: Record<string, unknown> = {
-        messages: [...historyForApi, { role: "user" as const, content: text }],
-        systemPrompt, model, temperature, history: historyForApi, message: text,
+        messages: [...history, { role: "user", content: text }],
+        systemPrompt, model, temperature, history, message: text,
       };
       if (apiProvider === "groq") body.apiKey = apiKey;
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        let errMsg = `Server error (${res.status})`;
-        try { const d = await res.json(); errMsg = d.error || errMsg; } catch {}
-        throw new Error(errMsg);
-      }
-      const data = await res.json();
-      if (!data.success && !data.message) throw new Error(data.error || "No response generated.");
-      return data.message || data.reply || null;
-    } catch (err: unknown) {
-      console.error("[MPA Chat Error]", err);
+      const result = await callApi(body);
+      return result.message || null;
+    } catch (err) {
+      console.error("[MPA Chat]", err);
       return null;
     }
-  }, [apiProvider, apiKey, model, temperature, masterObjective, targetEntity, targetContext, protocol, customDirectives, layers]);
+  }, [apiProvider, apiKey, model, temperature, masterObjective, targetEntity, targetContext, protocol, customDirectives, layers, callApi]);
 
+  // ── Generate full prompt ──────────────────────────────────────────────────
   const handleGenerate = useCallback(async () => {
     setIsLoading(true);
     setIsStreaming(true);
     setIslandMode("generating");
     setPayload("");
-    const systemPrompt = buildSystemPrompt({ masterObjective, targetEntity, targetContext, protocol, customDirectives, layers });
-    const userMessage = `Generate a comprehensive MACH Enterprise Prompt for: ${targetEntity || "a new project"}. Context: ${targetContext || "As described"}. Protocol: ${protocol || "REST"}.${masterObjective ? ` Objective: ${masterObjective}.` : ""}${customDirectives ? ` Directives: ${customDirectives}.` : ""}`;
+
+    const assembled = assemblePayload({ masterObjective, targetEntity, targetContext, protocol, customDirectives, layers, model, temperature });
     const t0 = Date.now();
+
     try {
-      const endpoint = apiProvider === "openai" ? "/api/chat" : "/api/groq";
       const body: Record<string, unknown> = {
-        messages: [{ role: "user", content: userMessage }],
-        systemPrompt, model, temperature, message: userMessage,
+        messages: [{ role: "user", content: assembled.userMessage }],
+        systemPrompt: assembled.systemPrompt,
+        model, temperature,
+        message: assembled.userMessage,
       };
       if (apiProvider === "groq") body.apiKey = apiKey;
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        let errMsg = "Generation failed. Try again.";
-        try { const d = await res.json(); errMsg = d.error || errMsg; } catch {}
-        throw new Error(errMsg);
-      }
-      const data = await res.json();
-      const reply = data.message || data.reply || "";
-      if (!reply.trim()) throw new Error("AI returned an empty response. Try again.");
+
+      const result = await callApi(body);
+      if (!result.message.trim()) throw new Error("AI returned an empty response. Try again.");
+
       const elapsed = Date.now() - t0;
-      setPayload(reply);
-      setTokensUsed(data.tokensUsed || Math.round(reply.length / 4));
+      setPayload(result.message);
+      setTokensUsed(result.tokensUsed || Math.round(result.message.length / 4));
       setDurationMs(elapsed);
       setActiveModel(model);
       setIslandMode("success");
       scheduleIslandReset(2500);
-      const userMsg: ChatMessage = { id: `${Date.now()}-u`, role: "user", content: userMessage, timestamp: Date.now() };
-      const assistantMsg: ChatMessage = { id: `${Date.now()}-a`, role: "assistant", content: reply, timestamp: Date.now() };
-      setChatMessages((prev) => [...prev, userMsg, assistantMsg]);
+
+      const userMsg: ChatMessage = { id: `${Date.now()}-u`, role: "user", content: assembled.userMessage, timestamp: Date.now() };
+      const asstMsg: ChatMessage = { id: `${Date.now()}-a`, role: "assistant", content: result.message, timestamp: Date.now() };
+      setChatMessages((prev) => [...prev, userMsg, asstMsg]);
       setMobileTab("output");
-    } catch (err: unknown) {
+    } catch (err) {
       const raw = err instanceof Error ? err.message : "Unknown error.";
       let msg = raw;
-      if (/401|invalid|auth|key/i.test(raw)) msg = "Invalid API key. Check and re-enter.";
-      else if (/429|rate/i.test(raw)) msg = "Rate limit reached. Wait 60 seconds.";
+      if (/401|invalid|auth|key/i.test(raw)) msg = "Invalid API key. Check settings.";
+      else if (/429|rate/i.test(raw)) msg = "Rate limit hit. Wait 60 seconds.";
       else if (/fetch|network|ECONNREFUSED/i.test(raw)) msg = "Network error. Check connection.";
       setIslandMode("error");
       setIslandError(msg);
@@ -166,9 +345,9 @@ export default function Home() {
       setIsLoading(false);
       setIsStreaming(false);
     }
-  }, [apiProvider, apiKey, model, temperature, masterObjective, targetEntity, targetContext, protocol, customDirectives, layers, scheduleIslandReset]);
+  }, [apiProvider, apiKey, model, temperature, masterObjective, targetEntity, targetContext, protocol, customDirectives, layers, callApi, scheduleIslandReset]);
 
-  const applyTemplate = useCallback((t: IndustryTemplate) => {
+  const handleTemplateSelect = useCallback((t: IndustryTemplate) => {
     setTargetEntity(t.entity);
     setTargetContext(t.context);
     if (t.masterObjective) setMasterObjective(t.masterObjective);
@@ -184,78 +363,74 @@ export default function Home() {
     }
   }, []);
 
-  const saveProject = useCallback((label: string) => {
-    if (!targetEntity.trim()) return;
-    const entry: SavedProject = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      label: label.trim() || targetEntity,
-      entity: targetEntity,
-      context: targetContext,
-      masterObjective,
-      protocol,
-      createdAt: Date.now(),
-    };
-    setProjects((prev) => [entry, ...prev].slice(0, 20));
-  }, [targetEntity, targetContext, masterObjective, protocol]);
-
-  const loadProject = useCallback((p: SavedProject) => {
-    setTargetEntity(p.entity);
-    setTargetContext(p.context);
-    setMasterObjective(p.masterObjective);
-    setProtocol(p.protocol);
+  const handleChatMessagesChange = useCallback((msgs: ChatMessage[]) => {
+    setChatMessages(msgs);
   }, []);
 
-  const deleteProject = useCallback((id: string) => {
-    setProjects((prev) => prev.filter((p) => p.id !== id));
-  }, []);
-
+  // ── Derived ───────────────────────────────────────────────────────────────
   const canGenerate = !isLoading && !!targetEntity.trim() && !!targetContext.trim();
   const activeLayerCount = Object.values(layers).filter(Boolean).length;
   const hasOutput = payload.length > 0;
-  const handleChatMessagesChange = useCallback((msgs: ChatMessage[]) => { setChatMessages(msgs); }, []);
+  const sessionMetas = sessions.map(toSessionMeta);
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="h-screen flex flex-col bg-[#0a0a0a] text-white overflow-hidden">
-      <header className="flex items-center justify-between px-4 py-2.5 border-b border-white/10 bg-[#0f0f0f] shrink-0 z-20">
+
+      {/* ─── Header ─── */}
+      <header className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.07] bg-[#0f0f0f] shrink-0 z-20">
         <div className="flex items-center gap-3">
-          <Shield size={16} className="text-emerald-400" />
+          <div className="w-7 h-7 flex items-center justify-center shrink-0">
+            <svg viewBox="0 0 28 28" fill="none" className="w-7 h-7">
+              <polygon points="14,2 25,8 25,20 14,26 3,20 3,8" fill="none" stroke="#00ff88" strokeWidth="1.5" />
+              <polygon points="14,6 21,10 21,18 14,22 7,18 7,10" fill="#00ff88" fillOpacity="0.15" />
+              <polygon points="14,9 18.5,11.5 18.5,16.5 14,19 9.5,16.5 9.5,11.5" fill="#00ff88" fillOpacity="0.08" />
+            </svg>
+          </div>
           <div>
-            <h1 className="text-sm font-semibold tracking-tight font-mono">MPA Terminal</h1>
-            <p className="text-[9px] text-emerald-400 font-mono uppercase tracking-[0.2em]">Master Plan Architect</p>
+            <h1 className="text-sm font-bold tracking-tight font-mono text-white leading-none">MPA Terminal</h1>
+            <p className="text-[9px] text-[#00ff88]/60 font-mono uppercase tracking-[0.18em] leading-none mt-0.5">Master Plan Architect</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <DynamicIsland mode={islandMode} errorMsg={islandError} />
-          {activeLayerCount > 0 && (
-            <span className="hidden md:inline text-[10px] font-mono px-2 py-0.5 rounded-full text-emerald-400 border border-emerald-500/30 bg-emerald-500/10">
-              {activeLayerCount} layers
+
+        <div className="flex items-center gap-2">
+          {islandMode !== "idle" && (
+            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+              islandMode === "generating" ? "text-amber-400 border-amber-500/30 bg-amber-500/8" :
+              islandMode === "success"    ? "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/8" :
+                                           "text-red-400 border-red-500/30 bg-red-500/8"
+            }`}>
+              {islandMode === "generating" && "⟳ Generating…"}
+              {islandMode === "success"    && "✓ Prompt Ready"}
+              {islandMode === "error"      && `⚠ ${(islandError ?? "Error").slice(0, 30)}`}
             </span>
           )}
+          <span className="text-[10px] font-mono px-2.5 py-1 rounded-full border border-[#00ff88]/25 text-[#00ff88] bg-[#00ff88]/8 font-bold tracking-wide">
+            MPA v2.0
+          </span>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="hidden md:flex items-center justify-center w-7 h-7 rounded-lg hover:bg-white/5 transition-colors text-gray-500"
+            className="hidden md:flex items-center justify-center w-7 h-7 rounded-lg hover:bg-white/5 transition-colors text-gray-600"
           >
             {sidebarOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
           </button>
         </div>
       </header>
 
-      {/* Desktop Layout */}
+      {/* ─── Desktop ─── */}
       <div className="hidden md:flex flex-1 overflow-hidden">
         <AnimatePresence>
           {sidebarOpen && (
             <motion.aside
               key="sidebar"
               initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 280, opacity: 1 }}
+              animate={{ width: 300, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="border-r border-white/10 bg-[#0f0f0f] overflow-y-auto overflow-x-hidden shrink-0"
-              style={{ scrollbarWidth: "thin" }}
+              transition={{ duration: 0.18 }}
+              className="border-r border-white/[0.07] bg-[#0d0d0d] overflow-hidden shrink-0"
             >
-              <div className="p-3 space-y-3">
-                <TemplateSelector onSelect={applyTemplate} />
-                <SettingsPanel
+              <div className="h-full overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+                <ConfigPanel
                   apiKey={apiKey}                     setApiKey={setApiKey}
                   apiProvider={apiProvider}           setApiProvider={setApiProvider}
                   model={model}                       setModel={setModel}
@@ -265,57 +440,64 @@ export default function Home() {
                   protocol={protocol}                 setProtocol={setProtocol}
                   customDirectives={customDirectives} setCustomDirectives={setCustomDirectives}
                   temperature={temperature}           setTemperature={setTemperature}
-                  showKey={showKey}                   setShowKey={setShowKey}
+                  onTemplateSelect={handleTemplateSelect}
                   onGenerate={handleGenerate}
                   isLoading={isLoading}
                   canGenerate={canGenerate}
-                />
-                <ProjectVault
-                  projects={projects}
-                  onSave={saveProject}
-                  onLoad={loadProject}
-                  onDelete={deleteProject}
-                  currentEntity={targetEntity}
                 />
               </div>
             </motion.aside>
           )}
         </AnimatePresence>
 
-        <main className="flex-1 flex overflow-hidden">
-          <div className="w-[60%] border-r border-white/10 flex flex-col">
+        <main className="flex-1 flex overflow-hidden min-w-0">
+          {/* Chat */}
+          <div className="flex-1 border-r border-white/[0.07] flex flex-col min-w-0">
             <ChatPanel
+              key={activeSessionId}
               onSendMessage={handleSendMessage}
+              onGenerate={handleGenerate}
               isLoading={isLoading}
               initialMessages={chatMessages}
               onMessagesChange={handleChatMessagesChange}
             />
           </div>
-          <div className="w-[40%] flex flex-col bg-[#0a0a0a]">
-            <OutputViewer
-              payload={payload}
-              tokensUsed={tokensUsed}
-              durationMs={durationMs}
-              model={activeModel}
-              isStreaming={isStreaming}
-            />
+
+          {/* Layers + Output */}
+          <div className="w-[320px] flex flex-col bg-[#0a0a0a] shrink-0">
+            <div className="h-[48%] border-b border-white/[0.07] overflow-hidden">
+              <LayerPanel layers={layers} onToggle={handleLayerToggle} />
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <OutputViewer
+                payload={payload}
+                tokensUsed={tokensUsed}
+                durationMs={durationMs}
+                model={activeModel}
+                isStreaming={isStreaming}
+                onGenerateNow={handleGenerate}
+              />
+            </div>
           </div>
         </main>
       </div>
 
-      {/* Mobile Layout — default tab: "chat" */}
+      {/* ─── Mobile ─── */}
       <div className="md:hidden flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-hidden">
           {mobileTab === "chat" && (
             <ChatPanel
+              key={activeSessionId}
               onSendMessage={handleSendMessage}
+              onGenerate={handleGenerate}
               isLoading={isLoading}
               initialMessages={chatMessages}
               onMessagesChange={handleChatMessagesChange}
+              placeholder={'Type a message… e.g. "add quantum security"'}
             />
           )}
           {mobileTab === "layers" && (
-            <div className="h-full overflow-y-auto p-4">
+            <div className="h-full overflow-y-auto">
               <LayerPanel layers={layers} onToggle={handleLayerToggle} />
             </div>
           )}
@@ -326,37 +508,45 @@ export default function Home() {
               durationMs={durationMs}
               model={activeModel}
               isStreaming={isStreaming}
+              onGenerateNow={handleGenerate}
             />
           )}
-          {mobileTab === "settings" && (
-            <div className="h-full overflow-y-auto p-4 space-y-4">
-              <TemplateSelector onSelect={applyTemplate} />
-              <SettingsPanel
-                apiKey={apiKey}                     setApiKey={setApiKey}
-                apiProvider={apiProvider}           setApiProvider={setApiProvider}
-                model={model}                       setModel={setModel}
-                masterObjective={masterObjective}   setMasterObjective={setMasterObjective}
-                targetEntity={targetEntity}         setTargetEntity={setTargetEntity}
-                targetContext={targetContext}        setTargetContext={setTargetContext}
-                protocol={protocol}                 setProtocol={setProtocol}
-                customDirectives={customDirectives} setCustomDirectives={setCustomDirectives}
-                temperature={temperature}           setTemperature={setTemperature}
-                showKey={showKey}                   setShowKey={setShowKey}
-                onGenerate={handleGenerate}
-                isLoading={isLoading}
-                canGenerate={canGenerate}
-              />
-              <ProjectVault
-                projects={projects}
-                onSave={saveProject}
-                onLoad={loadProject}
-                onDelete={deleteProject}
-                currentEntity={targetEntity}
-              />
-            </div>
+          {mobileTab === "sessions" && (
+            <SessionsPanel
+              sessions={sessionMetas}
+              activeSessionId={activeSessionId}
+              onNewSession={handleNewSession}
+              onSelectSession={handleSelectSession}
+              onDeleteSession={handleDeleteSession}
+              onRenameSession={handleRenameSession}
+              activeLayerCount={activeLayerCount}
+            />
+          )}
+          {mobileTab === "config" && (
+            <ConfigPanel
+              apiKey={apiKey}                     setApiKey={setApiKey}
+              apiProvider={apiProvider}           setApiProvider={setApiProvider}
+              model={model}                       setModel={setModel}
+              masterObjective={masterObjective}   setMasterObjective={setMasterObjective}
+              targetEntity={targetEntity}         setTargetEntity={setTargetEntity}
+              targetContext={targetContext}        setTargetContext={setTargetContext}
+              protocol={protocol}                 setProtocol={setProtocol}
+              customDirectives={customDirectives} setCustomDirectives={setCustomDirectives}
+              temperature={temperature}           setTemperature={setTemperature}
+              onTemplateSelect={handleTemplateSelect}
+              onGenerate={handleGenerate}
+              isLoading={isLoading}
+              canGenerate={canGenerate}
+            />
           )}
         </div>
-        <MobileNav activeTab={mobileTab} onTabChange={setMobileTab} hasOutput={hasOutput} />
+
+        <MobileNav
+          activeTab={mobileTab}
+          onTabChange={setMobileTab}
+          hasOutput={hasOutput}
+          activeLayerCount={activeLayerCount}
+        />
       </div>
     </div>
   );

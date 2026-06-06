@@ -72,9 +72,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const modelId: string = model || "llama3-70b-8192";
+    const modelId: string = model || "llama-3.3-70b-versatile";
     const temp = Math.min(2.0, 0.3 + ((temperature ?? 0.7) * 0.9));
-    const maxTokens = modelId.includes("8b") ? 4096 : 8000;
+    const maxTokens = modelId.includes("8b") ? 4096 : modelId.includes("versatile") ? 32768 : 8000;
 
     const response = await groq.chat.completions.create({
       model: modelId,
