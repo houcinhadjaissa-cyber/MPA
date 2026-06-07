@@ -9,10 +9,11 @@ import OutputViewer from "@/components/mpa/OutputViewer";
 import LayerPanel from "@/components/mpa/LayerPanel";
 import ConfigPanel from "@/components/mpa/ConfigPanel";
 import SessionsPanel, { type Session } from "@/components/mpa/SessionsPanel";
+import HistoryPanel, { type PromptHistoryItem } from "@/components/mpa/HistoryPanel";
 import MobileNav, { type MobileTab } from "@/components/mpa/MobileNav";
 
 import { buildSystemPrompt, INITIAL_LAYERS, type LayerState, type LayerKey } from "@/lib/mpa/layers";
-import { assemblePayload } from "@/lib/mpa/payloadGenerator";
+import { assemblePayload, scoreOutput, getModelDisplayName } from "@/lib/mpa/payloadGenerator";
 import { type IndustryTemplate } from "@/lib/mpa/templates";
 import { lsGet, lsSet, lsGetJSON, lsSetJSON, LS_KEYS } from "@/lib/mpa/storage";
 import { generateSyncId } from "@/lib/mpa/crypto";
@@ -84,6 +85,9 @@ export default function Home() {
   const [durationMs, setDurationMs] = useState(0);
   const [activeModel, setActiveModel] = useState("");
 
+  // ── Prompt History ─────────────────────────────────────────────────────────
+  const [promptHistory, setPromptHistory] = useState<PromptHistoryItem[]>([]);
+
   // ── UI state ───────────────────────────────────────────────────────────────
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -91,6 +95,7 @@ export default function Home() {
   const [islandError, setIslandError] = useState<string | undefined>();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileTab, setMobileTab] = useState<MobileTab>("chat");
+  const [outputSubTab, setOutputSubTab] = useState<"output" | "history">("output");
 
   const islandTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatMessagesRef = useRef<ChatMessage[]>([]);
@@ -125,6 +130,9 @@ export default function Home() {
     setProtocol(lsGet(LS_KEYS.PROTOCOL, "rest"));
     setCustomDirectives(lsGet(LS_KEYS.CUSTOM_DIRECTIVES));
     setTemperature(parseFloat(lsGet(LS_KEYS.TEMPERATURE, "0.7")));
+
+    const storedHistory = lsGetJSON<PromptHistoryItem[]>(LS_KEYS.PROMPT_HISTORY, []);
+    setPromptHistory(storedHistory);
 
     const stored = lsGetJSON<SessionData[]>(LS_KEYS.SESSIONS, []);
     const storedActiveId = lsGet(LS_KEYS.ACTIVE_SESSION, "");
@@ -169,6 +177,7 @@ export default function Home() {
   useEffect(() => { lsSet(LS_KEYS.CUSTOM_DIRECTIVES, customDirectives); }, [customDirectives]);
   useEffect(() => { lsSet(LS_KEYS.TEMPERATURE, temperature.toString()); }, [temperature]);
   useEffect(() => { if (activeSessionId) lsSet(LS_KEYS.ACTIVE_SESSION, activeSessionId); }, [activeSessionId]);
+  useEffect(() => { lsSetJSON(LS_KEYS.PROMPT_HISTORY, promptHistory); }, [promptHistory]);
 
   // ── Save active session on state changes ─────────────────────────────────
   useEffect(() => {
@@ -254,6 +263,45 @@ export default function Home() {
       return updated;
     });
   }, [debouncedSave]);
+
+  // ── Prompt History CRUD ───────────────────────────────────────────────────
+  const handleSaveToHistory = useCallback((content: string) => {
+    if (!content.trim()) return;
+    const activeSession = sessions.find((s) => s.id === activeSessionId);
+    const { score, label: scoreLabel, wordCount } = scoreOutput(content);
+    const activeLayerCount = Object.values(layers).filter(Boolean).length;
+    const item: PromptHistoryItem = {
+      id: generateSyncId(),
+      title: content.replace(/#{1,6}\s?/g, "").trim().slice(0, 80) || "Untitled Prompt",
+      content,
+      model: getModelDisplayName(activeModel || model),
+      score,
+      scoreLabel,
+      wordCount,
+      createdAt: Date.now(),
+      starred: false,
+      sessionName: activeSession?.name || "Default",
+      activeLayerCount,
+    };
+    setPromptHistory((prev) => {
+      const updated = [item, ...prev].slice(0, 50);
+      return updated;
+    });
+  }, [sessions, activeSessionId, layers, activeModel, model]);
+
+  const handleDeleteHistory = useCallback((id: string) => {
+    setPromptHistory((prev) => prev.filter((h) => h.id !== id));
+  }, []);
+
+  const handleToggleStar = useCallback((id: string) => {
+    setPromptHistory((prev) => prev.map((h) => h.id === id ? { ...h, starred: !h.starred } : h));
+  }, []);
+
+  const handleLoadHistory = useCallback((item: PromptHistoryItem) => {
+    setPayload(item.content);
+    setOutputSubTab("output");
+    setMobileTab("output");
+  }, []);
 
   // ── Layer toggle ──────────────────────────────────────────────────────────
   const handleLayerToggle = useCallback((key: LayerKey) => {
@@ -463,20 +511,60 @@ export default function Home() {
             />
           </div>
 
-          {/* Layers + Output */}
+          {/* Layers + Output + History */}
           <div className="w-[320px] flex flex-col bg-[#0a0a0a] shrink-0">
-            <div className="h-[48%] border-b border-white/[0.07] overflow-hidden">
+            <div className="h-[42%] border-b border-white/[0.07] overflow-hidden">
               <LayerPanel layers={layers} onToggle={handleLayerToggle} />
             </div>
+            {/* Output / History sub-tabs */}
+            <div className="flex border-b border-white/[0.07] shrink-0">
+              <button
+                onClick={() => setOutputSubTab("output")}
+                className={`flex-1 py-2 text-[10px] font-mono uppercase tracking-[0.15em] font-semibold transition-colors ${
+                  outputSubTab === "output"
+                    ? "text-[#00ff88] border-b-2 border-[#00ff88]"
+                    : "text-gray-600 hover:text-gray-400"
+                }`}
+              >
+                Output
+              </button>
+              <button
+                onClick={() => setOutputSubTab("history")}
+                className={`flex-1 py-2 text-[10px] font-mono uppercase tracking-[0.15em] font-semibold transition-colors flex items-center justify-center gap-1.5 ${
+                  outputSubTab === "history"
+                    ? "text-[#00ff88] border-b-2 border-[#00ff88]"
+                    : "text-gray-600 hover:text-gray-400"
+                }`}
+              >
+                History
+                {promptHistory.length > 0 && (
+                  <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-bold ${
+                    outputSubTab === "history" ? "bg-[#00ff88]/15 text-[#00ff88]" : "bg-white/8 text-gray-500"
+                  }`}>
+                    {promptHistory.length}
+                  </span>
+                )}
+              </button>
+            </div>
             <div className="flex-1 overflow-hidden">
-              <OutputViewer
-                payload={payload}
-                tokensUsed={tokensUsed}
-                durationMs={durationMs}
-                model={activeModel}
-                isStreaming={isStreaming}
-                onGenerateNow={handleGenerate}
-              />
+              {outputSubTab === "output" ? (
+                <OutputViewer
+                  payload={payload}
+                  tokensUsed={tokensUsed}
+                  durationMs={durationMs}
+                  model={activeModel}
+                  isStreaming={isStreaming}
+                  onGenerateNow={handleGenerate}
+                  onSaveToHistory={handleSaveToHistory}
+                />
+              ) : (
+                <HistoryPanel
+                  history={promptHistory}
+                  onDelete={handleDeleteHistory}
+                  onToggleStar={handleToggleStar}
+                  onLoad={handleLoadHistory}
+                />
+              )}
             </div>
           </div>
         </main>
@@ -502,14 +590,58 @@ export default function Home() {
             </div>
           )}
           {mobileTab === "output" && (
-            <OutputViewer
-              payload={payload}
-              tokensUsed={tokensUsed}
-              durationMs={durationMs}
-              model={activeModel}
-              isStreaming={isStreaming}
-              onGenerateNow={handleGenerate}
-            />
+            <div className="flex flex-col h-full">
+              {/* Output / History sub-tabs (mobile) */}
+              <div className="flex border-b border-white/[0.07] shrink-0 bg-[#0d0d0d]">
+                <button
+                  onClick={() => setOutputSubTab("output")}
+                  className={`flex-1 py-2.5 text-[10px] font-mono uppercase tracking-[0.15em] font-semibold transition-colors ${
+                    outputSubTab === "output"
+                      ? "text-[#00ff88] border-b-2 border-[#00ff88]"
+                      : "text-gray-600 hover:text-gray-400"
+                  }`}
+                >
+                  Output
+                </button>
+                <button
+                  onClick={() => setOutputSubTab("history")}
+                  className={`flex-1 py-2.5 text-[10px] font-mono uppercase tracking-[0.15em] font-semibold transition-colors flex items-center justify-center gap-1.5 ${
+                    outputSubTab === "history"
+                      ? "text-[#00ff88] border-b-2 border-[#00ff88]"
+                      : "text-gray-600 hover:text-gray-400"
+                  }`}
+                >
+                  History
+                  {promptHistory.length > 0 && (
+                    <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-bold ${
+                      outputSubTab === "history" ? "bg-[#00ff88]/15 text-[#00ff88]" : "bg-white/8 text-gray-500"
+                    }`}>
+                      {promptHistory.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                {outputSubTab === "output" ? (
+                  <OutputViewer
+                    payload={payload}
+                    tokensUsed={tokensUsed}
+                    durationMs={durationMs}
+                    model={activeModel}
+                    isStreaming={isStreaming}
+                    onGenerateNow={handleGenerate}
+                    onSaveToHistory={handleSaveToHistory}
+                  />
+                ) : (
+                  <HistoryPanel
+                    history={promptHistory}
+                    onDelete={handleDeleteHistory}
+                    onToggleStar={handleToggleStar}
+                    onLoad={handleLoadHistory}
+                  />
+                )}
+              </div>
+            </div>
           )}
           {mobileTab === "sessions" && (
             <SessionsPanel

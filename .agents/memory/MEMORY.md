@@ -1,0 +1,1 @@
+- [Next.js Vercel deployment](nextjs-vercel-deployment.md) — Next.js 16.x is Replit-only; use next@15.3.3 in package.json for Vercel. Replit's firewall blocks downloading it, so leave node_modules untouched.

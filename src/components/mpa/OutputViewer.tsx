@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Download, Check, Code2, Sparkles } from "lucide-react";
+import { Copy, Download, Check, Code2, Sparkles, Star } from "lucide-react";
 import { scoreOutput, formatTokenCount, getModelDisplayName } from "@/lib/mpa/payloadGenerator";
 
 interface OutputViewerProps {
@@ -11,10 +11,12 @@ interface OutputViewerProps {
   model?: string;
   isStreaming?: boolean;
   onGenerateNow?: () => void;
+  onSaveToHistory?: (content: string) => void;
 }
 
-export default function OutputViewer({ payload, tokensUsed, durationMs, model, isStreaming, onGenerateNow }: OutputViewerProps) {
+export default function OutputViewer({ payload, tokensUsed, durationMs, model, isStreaming, onGenerateNow, onSaveToHistory }: OutputViewerProps) {
   const [copied, setCopied] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [view, setView] = useState<"raw" | "preview">("raw");
 
   const handleCopy = async () => {
@@ -96,6 +98,26 @@ export default function OutputViewer({ payload, tokensUsed, durationMs, model, i
           )}
         </div>
         <div className="flex items-center gap-1.5">
+          {onSaveToHistory && (
+            <button
+              onClick={() => {
+                if (!payload) return;
+                onSaveToHistory(payload);
+                setSaved(true);
+                setTimeout(() => setSaved(false), 2500);
+              }}
+              disabled={!payload}
+              title="Save to History"
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-mono transition-all ${
+                saved
+                  ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                  : "bg-[#1a1a1a] text-gray-400 hover:text-amber-400 border border-white/6"
+              } disabled:opacity-30`}
+            >
+              <Star size={10} fill={saved ? "currentColor" : "none"} />
+              {saved ? "Saved!" : "Save"}
+            </button>
+          )}
           <button
             onClick={handleCopy}
             disabled={!payload}
