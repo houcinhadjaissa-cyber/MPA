@@ -1,1 +1,2 @@
-- [Next.js Vercel deployment](nextjs-vercel-deployment.md) — Next.js 16.x is Replit-only; use next@15.3.3 in package.json for Vercel. Replit's firewall blocks downloading it, so leave node_modules untouched.
+- [Next.js Vercel deployment](nextjs-vercel-deployment.md) — Replit only allows next@16.x (custom build); use next@14.2.22 in package.json for Vercel. Cannot npm install any next version except 16.x on Replit.
+- [Tailwind v3 install on Replit](tailwind-v3-install.md) — Move blocking deps (next, react) to optionalDependencies, run npm install, restore package.json. Tailwind v3 installs fine this way.
